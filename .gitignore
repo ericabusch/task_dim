@@ -1,0 +1,11 @@
+*.png
+*.npy
+*.nii.gz
+*.nii
+*.csv
+*.log
+*.out
+*/log
+*__pycache__/
+*nilearn_cache/
+

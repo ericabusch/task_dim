@@ -1,13 +1,77 @@
 # Paths and variables specific to the datasets
-# erica busch, 2022
+# erica busch, 2023
 from os.path import *
 import numpy as np
 import glob
+import os
 
 NJOBS=16
 
 ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
 SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dimension'
+
+
+
+#### CONFIG INFORMATION FOR REST_MOVIE
+BASE_DIR_RM='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/'
+REST_DIR="/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Adult_Rest/preprocessed_standard/nonlinear_alignment/"
+AERONAUT_DIR="/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Adult_Aeronaut/preprocessed_standard/nonlinear_alignment/"
+MICKEY_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Adult_Mickey/preprocessed_standard/nonlinear_alignment/'
+LK_CARTOON_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/LionKing_Cartoon/preprocessed_standard/nonlinear_alignment/' # appears to be not formatted
+LK_LA_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/LionKing_Live/preprocessed_standard/nonlinear_alignment/' # appears to be not formatted
+
+RM_DATA_DIRS={'REST':REST_DIR, 'AERONAUT':AERONAUT_DIR, 'MICKEY':MICKEY_DIR}
+RM_TIMEPOINTS={'REST':152, 'AERONAUT':93, 'MICKEY':74, 'LK_CARTOON':93, 'LK_LA':93}
+
+RM_MASKS={K:f'{ROOT}/task_dim/masks/Adult_{K.lower().capitalize()}_intersect_mask.nii.gz' for K in RM_DATA_DIRS.keys()}
+RM_SUBJECTS = [f'rest_movie_{i:02d}' for i in [1,2,3,4,5,7,8,9,10,11,12]] # subject 6 does not have mickey
+RM_RESULTS_DIR = f'{ROOT}/task_dim/RestMovie/results'
+RM_STRING_MATCH = '*_fslmotion_thr0.2_Only.nii.gz'
+RM_INTERSECT_MASK = f'{ROOT}/task_dim/masks/AERONAUT_MICKEY_REST_intersect_mask.nii.gz'
+
+
+### CONFIG FOR REST MOVIE INFANTS 
+SLEEP_B_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Sleep/preprocessed_standard/nonlinear_alignment/'
+AERONAUT_B_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Aeronaut/preprocessed_standard/nonlinear_alignment/'
+MICKEY_B_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Sleep/preprocessed_standard/nonlinear_alignment/'
+
+
+
+### CONFIG INFO FOR NARRATIVES ##
+BASE_DIR_NARRATIVES = '/gpfs/milgram/project/turk-browne/projects/Narratives'
+NARRATIVES_DATALAD_DIR='/gpfs/milgram/scratch60/turk-browne/elb77/Narratives/narratives'
+NARRATIVES_DATA_DIRS = {'BLACK':join(BASE_DIR_NARRATIVES, 'black'),
+                        'PIEMANPNI':join(BASE_DIR_NARRATIVES, 'piemanpni'), 
+                        'BRONX':join(BASE_DIR_NARRATIVES, 'bronx'),
+                        'FORGOT':join(BASE_DIR_NARRATIVES, 'forgot')}
+NARRATIVES_SUBJECTS = [127, 265, 267, 272, 273, 274, 275, 276, 277, 279, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315]
+NARRATIVES_SUBJECTS = [f'sub-{s}' for s in NARRATIVES_SUBJECTS]
+NARRATIVES_TIMEPOINTS={'BLACK':550, 'BRONX':390, 'FORGOT':574, 'PIEMANPNI':294}
+NARRATIVES_RESULTS_DIR = f'{ROOT}/task_dim/Narratives/results'
+NARRATIVES_INTERSECT_MASK=f'{ROOT}/task_dim/masks/group-MNI152NLin2009cAsym_res-black-bronx-forgot-piemanpni_desc-brain_mask-group.nii.gz'
+
+
+## CONFIG INFO FOR CAMCAN
+BASE_DIR_CAMCAN = '/gpfs/milgram/project/casey/elb77/CamCAN/'
+CAMCAN_PREPROC_MIDSTR='cc700/mri/pipeline/release004/data_fMRI/aamod_norm_write_dartel_00001/'
+CAMCAN_RAW_MIDSTR='cc700/mri/pipeline/release004/BIDS_20190411/'
+
+CAMCAN_RAW_DIRS = {'MOVIE':join(BASE_DIR_CAMCAN, CAMCAN_RAW_MIDSTR, 'epi_movie'),
+                    'REST':join(BASE_DIR_CAMCAN, CAMCAN_RAW_MIDSTR, 'epi_rest'),
+                    'SMT': join(BASE_DIR_CAMCAN, CAMCAN_RAW_MIDSTR, 'epi_smt')}
+CAMCAN_TASKS = ['MOVIE','REST','SMT']
+CAMCAN_DIR_CODE = {"MOVIE":'Movie', 'REST':"Rest", "SMT": "SMT"}
+
+CAMCAN_PARTICIPANT_FILES = {TASK: join(CAMCAN_RAW_DIRS[TASK], 'participants.tsv') for TASK in CAMCAN_TASKS}
+
+CAMCAN_ORGANIZED_DIRS = {'MOVIE': join(BASE_DIR_CAMCAN,'fMRI_organized', 'movie'), 
+                        'REST': join(BASE_DIR_CAMCAN,'fMRI_organized', 'rest'),
+                        'SMT': join(BASE_DIR_CAMCAN,'fMRI_organized', 'smt')}
+CAMCAN_RESULTS_DIR = f'{ROOT}/task_dim/CamCAN/results'
+
+
+
+## ALL OLD THINGS FOR STUDYFORREST WHICH WAS DESERTED
 RAW_DIR = f'{ROOT}/StudyForrest/studyforrest_bids/derivatives/fmriprep/'
 LABELS_DIR = f'{ROOT}/task_dim/labels'
 FEATURES_FILE=f'{LABELS_DIR}/forrest_movie_labels_coded_expanded.csv'
@@ -38,26 +102,3 @@ EMBEDDING_METHODS = ['PHATE', 'TPHATE', 'UMAP', 'PCA', "TSNE"]
 SUBJECTS  = [1,2,3,4,9,10,14,15,16,17,18,19,20]
 
 REGRESSOR_NAMES = {'movie':['IoE_coded','FoT_coded']}
-
-#### CONFIG INFORMATION FOR REST_MOVIE
-
-
-
-REST_DIR="/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Adult_Rest/preprocessed_standard/nonlinear_alignment/"
-AERONAUT_DIR="/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Adult_Aeronaut/preprocessed_standard/nonlinear_alignment/"
-MICKEY_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Adult_Mickey/preprocessed_standard/nonlinear_alignment/'
-LK_CARTOON_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/LionKing_Cartoon/preprocessed_standard/nonlinear_alignment/' # appears to be not formatted
-LK_LA_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/LionKing_Live/preprocessed_standard/nonlinear_alignment/' # appears to be not formatted
-
-RM_DATA_DIRS={'REST':REST_DIR, 'AERONAUT':AERONAUT_DIR, 'MICKEY':MICKEY_DIR, 'LK_CARTOON':LK_CARTOON_DIR, "LK_LA":LK_LA_DIR}
-RM_TIMEPOINTS={'REST':152, 'AERONAUT':93, 'MICKEY':74, 'LK_CARTOON':93, 'LK_LA':93}
-
-RM_MASKS={'REST':'./masks/Adult_Rest_intersect_mask.nii.gz', 'AERONAUT':'./masks/Adult_Aeronaut_intersect_mask.nii.gz', 'MICKEY':'./masks/Adult_Mickey_intersect_mask.nii.gz'}
-
-RM_SUBJECTS = {'REST':np.arange(1,13),'MICKEY':[1,2,3,4,5,7,8,9,10,11,12], 'AERONAUT':np.arange(1,13)}
-
-### CONFIG INFO FOR NARRATIVES ##
-BASE_DIR_NARRATIVES = '/gpfs/milgram/project/turk-browne/projects/Narratives'
-NARRATIVES_DATA_DIRS = {'BLACK':join(BASE_DIR_NARRATIVES, 'black'), 'PIEMANPNI':join(BASE_DIR_NARRATIVES, 'piemanpni'), 'BRONX':join(BASE_DIR_NARRATIVES, 'bronx'), 'FORGOT':join(BASE_DIR_NARRATIVES, 'forgot')}
-NARRATIVES_SUBJECTS = [127, 265, 267, 272, 273, 274, 275, 276, 277, 279, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315]
-NARRATIVES_TIMEPOINTS={'BLACK':550, 'BRONX':390, 'FORGOT':574, 'PIEMANPNI':294}
