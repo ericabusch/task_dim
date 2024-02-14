@@ -1,0 +1,5 @@
+/gpfs/milgram/project/casey/elb77/conda_envs/env_tda/lib/python3.7/site-packages/nilearn/__init__.py:69: FutureWarning: Python 3.7 support is deprecated and will be removed in release 0.12 of Nilearn. Consider switching to Python 3.9 or 3.10.
+  _python_deprecation_warnings()
+loaded narratives_utils
+/var/spool/slurmd/job24804810/slurm_script: line 12: 28994 Killed                  python -u whole_brain_dim.py -d $1
+slurmstepd: error: Detected 1 oom-kill event(s) in StepId=24804810.batch. Some of your processes may have been killed by the cgroup out-of-memory handler.

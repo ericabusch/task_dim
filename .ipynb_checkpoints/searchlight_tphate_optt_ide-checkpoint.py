@@ -18,6 +18,7 @@ import warnings
 warnings.filterwarnings("ignore")
 # Load in MPI
 from mpi4py import MPI
+import ide_helpers as ide
 
 def load_data(sub_id, task):
     
@@ -38,6 +39,9 @@ def load_data(sub_id, task):
 
 def tphate_kernel(data, sl_mask, myrad, bcvar):
     data=data[0]
+    smooth_window=bcvar[0][0]
+    knn=bcvar[0][1]
+        
     
     # make sure there's a constant # voxels
     num_voxels_in_sl = sl_mask.shape[0] * sl_mask.shape[1] * sl_mask.shape[2]
@@ -48,9 +52,8 @@ def tphate_kernel(data, sl_mask, myrad, bcvar):
     # check for unique input values 
     if np.linalg.norm(data_arr) == 0: return np.nan, np.nan
     
-    op = tphate.TPHATE(verbose=0, n_jobs=-1, smooth_window=2)
-    eb = op.fit_transform(data_arr)
-    return op.optimal_t, op.dropoff
+    t = ide.compute_tphate_t(data_arr, knn=knn, smooth_window=smooth_window)
+    return t
 
 if __name__ == '__main__':
 
@@ -60,6 +63,8 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--subject_idx', type=int)
     parser.add_argument('-r','--sl_rad', type=int, default=5)
     parser.add_argument('-s','--subject_filter', type=int, default=0)
+    parser.add_argument('-k','--knn_tphate', type=int, default=5)
+    parser.add_argument('-m','--smooth_window_tphate', type=int, default=1)
     parser.add_argument('-v','--verbose', type=int, default=1)
     parser.add_argument('-o', '--overwrite', type=int, default=0)
     parser.add_argument('-p', '--plot', type=int, default=0)
@@ -86,11 +91,11 @@ if __name__ == '__main__':
         print(f'test subject idx {p.subject_idx} not in list of len {len(ALL_SUBJECTS)}')
         sys.exit(2)
     this_subject = ALL_SUBJECTS[p.subject_idx]
-    results_outdir = os.path.join(utils.get_results_dir(), 'TPHATE_optt', 'LOSO')
-    plot_outdir = os.path.join(utils.get_results_dir().replace('results', 'plots'), 'TPHATE_optt', 'LOSO')
+    results_outdir = os.path.join(utils.get_results_dir(), 'IDE', 'LOSO')
+    plot_outdir = os.path.join(utils.get_results_dir().replace('results', 'plots'), 'IDE', 'LOSO')
     os.makedirs(results_outdir, exist_ok=True)
     os.makedirs(plot_outdir, exist_ok=True)
-    output_name = os.path.join(results_outdir, f'{this_subject}_{p.task}_tphate')
+    output_name = os.path.join(results_outdir, f'{this_subject}_{p.task}_tphate_optt_knn{p.knn_tphate}_smooth_window{p.smooth_window_tphate}')
     if not p.overwrite:
         fns = glob.glob(output_name+'*')
         if len(fns) != 0:
@@ -105,8 +110,8 @@ if __name__ == '__main__':
         masks.append(wb_mask)
         affines.append(affine_mat)
         dimsizes.append(dimsize)
-        bcvar.append([])
-        if p.verbose: print(f"Number of WB voxels: {np.sum(wb_mask == 1)}\nRunning subject {this_subject} task {p.task} slrad {p.sl_rad}")
+        bcvar.append([p.knn_tphate, p.smooth_window_tphate])
+        if p.verbose: print(f"Number of WB voxels: {np.sum(wb_mask == 1)}\nRunning subject {this_subject} task {p.task} slrad {p.sl_rad} knn={p.knn_tphate}, sm={p.smooth_window_tphate}")
     else:
         data.append(None)
         wb_mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
@@ -129,32 +134,22 @@ if __name__ == '__main__':
     if rank == 0: 
         if p.verbose: print(f'results of shape: {np.shape(all_sl_result)}')
         result_vec = all_sl_result[coords]
-        result_vec = [2*[0] if not n else n for n in result_vec] # replace all None
-
-        for i, nm, cmap in zip([0,1], ['optt', 'autocorr'], ['magma', 'viridis']):
-            result_vol = np.zeros_like(wb_mask)
-            res = [r[i] for r in result_vec]
-            result_vol[coords] = res
-            result_vol = result_vol.astype('double')
-            result_vol = np.nan_to_num(result_vol)
-            minn,maxx=np.min(result_vol), np.max(result_vol)
-
-            out_fn = f'{output_name}_{nm}_whole_brain_SL_rad{p.sl_rad}.nii.gz'
-            sl_nii = nib.Nifti1Image(result_vol, affine_mat)
-            # mask non-brain
-            masker_wb_plot = NiftiMasker(mask_img=brain_mask, standardize=False)
-            masked_sl_res = masker_wb_plot.fit_transform(sl_nii)
-            masked_sl_res = masker_wb_plot.inverse_transform(masked_sl_res).get_fdata()[:,:,:,0]
-            if p.verbose: print(f'shape after inverse: {masked_sl_res.shape}')
-            sl_nii = nib.Nifti1Image(masked_sl_res, affine_mat)
-
-            sl_nii.header.set_zooms(dimsize[:3])
-            nib.save(sl_nii, out_fn) 
-            if p.plot: 
-                if p.verbose: print(f"Saved result to {out_fn}; plotting")
-                title = f'{p.dataset} {p.task} {this_subject} tphate {nm} sl radius={p.sl_rad}'
-                plotting.plot_stat_map(out_fn, output_file=output_name.replace('.nii.gz', '_statmap.png').replace('results','plots'), colorbar=True, threshold=0, cmap=cmap, title=title)
-
-
-
-
+        result_vec = [0 if not n else n for n in result_vec] # replace all None
+        result_vol = np.zeros_like(wb_mask)
+        result_vol[coords] = np.squeeze(result_vec)
+        result_vol = result_vol.astype('double')
+        result_vol = np.nan_to_num(result_vol)
+        out_fn = f'{output_name}_whole_brain_SL_rad{p.sl_rad}.nii.gz'
+        sl_nii = nib.Nifti1Image(result_vol, affine_mat)
+        # mask non-brain
+        masker_wb_plot = NiftiMasker(mask_img=brain_mask, standardize=False)
+        masked_sl_res = masker_wb_plot.fit_transform(sl_nii)
+        masked_sl_res = masker_wb_plot.inverse_transform(masked_sl_res).get_fdata()[:,:,:,0]
+        sl_nii = nib.Nifti1Image(masked_sl_res, affine_mat)
+        sl_nii.header.set_zooms(dimsize[:3])
+        nib.save(sl_nii, out_fn) 
+        if p.plot: 
+            if p.verbose: print(f"Saved result to {out_fn}; plotting")
+            title = f'{p.dataset} {p.task} {this_subject} {p.metric} sl radius={p.sl_rad}'
+            plotting.plot_stat_map(out_fn, output_file=output_name.replace('.nii.gz', '_statmap.png').replace('results','plots'), colorbar=True, threshold=0, cmap=cmap, title=title)
+        

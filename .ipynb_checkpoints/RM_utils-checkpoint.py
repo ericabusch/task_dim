@@ -7,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib
 from nilearn.image import index_img
+from ide_helpers import METHOD_NAMES
 
 
 def determine_intersecting_subjects(rest_movie_basedir=None, task_list=[]):
@@ -72,9 +73,37 @@ def get_intersect_mask(subject_filter=0):
 
 
 def get_brain_cmap(mpl_colorname='inferno'):
-    n = 40
-    color_list = sns.color_palette(mpl_colorname,n)[0:n]
-    indices = np.concatenate((np.arange(n-1, -1, -1), np.arange(0, n,1)))
-    brain_cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", [color_list[i] for i in indices])
+    if type(mpl_colorname)== str:
+        n = 40
+        color_list = sns.color_palette(mpl_colorname,n)[0:n]
+        indices = np.concatenate((np.arange(n-1, -1, -1), np.arange(0, n,1)))
+        brain_cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", [color_list[i] for i in indices])
+    else:
+        first = mpl_colorname
+        second = mpl_colorname
+        colors1 = first(np.linspace(0., 1, 128))
+        colors2 = second(np.linspace(0, 1, 128))[::-1]
+        colors_combined = np.vstack((colors2, colors1))
+        brain_cmap = matplotlib.colors.ListedColormap(colors_combined)
     return brain_cmap
 
+def get_metric_nii_subject(subject, task, metric, filter_by_age=0, slrad=5):
+    # if metric == 'optt' or metric == 'autocorr':
+    #     dirname = f'{RM_RESULTS_DIR}/TPHATE_optt/LOSO'
+    #     filter_string=''
+    if metric == 'ISC':
+        dirname = f'{RM_RESULTS_DIR}/ISC/LOSO'
+        filter_string = f'_filter_{filter_by_age}'
+    else:# metric in METHOD_NAMES:
+        dirname = f'{RM_RESULTS_DIR}/IDE/LOSO'
+        filter_string=''
+    # else:
+    #     print(f'{metric} not found')
+    #     return
+    try:
+        task = task.lower().capitalize()
+        fn = glob.glob(f'{dirname}/{subject}{filter_string}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')[0]
+    except:
+        task = task.lower()
+        fn = glob.glob(f'{dirname}/{subject}{filter_string}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')[0]
+    return nib.load(fn)

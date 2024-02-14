@@ -34,6 +34,9 @@ RM_INTERSECT_MASK = f'{ROOT}/task_dim/masks/AERONAUT_MICKEY_REST_intersect_mask.
 SLEEP_B_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Sleep/preprocessed_standard/nonlinear_alignment/'
 AERONAUT_B_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Aeronaut/preprocessed_standard/nonlinear_alignment/'
 MICKEY_B_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Sleep/preprocessed_standard/nonlinear_alignment/'
+RM_INFANT_DATA_DIRS={'SLEEP':SLEEP_B_DIR, 'AERONAUT':AERONAUT_B_DIR, 'MICKEY':MICKEY_B_DIR}
+RM_INFANT_STRING_MATCH='*_fslmotion_thr0.2_Only.nii.gz'
+RM_INFANT_RESULTS_DIR = f'{ROOT}/task_dim/RestMovieInfant/results'
 
 
 

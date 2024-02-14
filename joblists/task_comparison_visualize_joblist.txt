@@ -1,0 +1,15 @@
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m _PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m DIFF_MAP_FisherS
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m PHATE_FisherS
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m TPHATE_FisherS
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m TPHATE_SE_at_t
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m PHATE_SE_at_t
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m MLE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m CorrInt
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m tphate_optt_knn5_smooth_window1
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m tphate_optt_knn5_smooth_window4
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m tphate_optt_knn20_smooth_window1
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m tphate_optt_knn20_smooth_window4
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m tphate_optt_knn50_smooth_window1
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py -d rest_movie -m tphate_optt_knn50_smooth_window4

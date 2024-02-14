@@ -1,0 +1,3 @@
+0	0	r812u01n11.milgram.hpc.yale.internal	2023-08-05 10:41:16	2023-08-05 14:57:15	15359.57	srun --mpi=pmi2 python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/searchlight_tphate_optt_ide.py -d narratives -t FORGOT -i 3 -r 5 -s 0
+1	0	r812u01n11.milgram.hpc.yale.internal	2023-08-05 14:57:20	2023-08-05 19:48:57	17496.99	srun --mpi=pmi2 python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/searchlight_tphate_optt_ide.py -d narratives -t FORGOT -i 12 -r 5 -s 0
+2	0	r812u01n01.milgram.hpc.yale.internal	2023-08-05 17:17:17	2023-08-05 21:27:28	15011.46	srun --mpi=pmi2 python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/searchlight_tphate_optt_ide.py -d narratives -t BLACK -i 12 -r 5 -s 0

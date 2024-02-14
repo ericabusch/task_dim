@@ -6,6 +6,7 @@ from config import *
 import pandas as pd
 import seaborn as sns
 import matplotlib
+from ide_helpers import METHOD_NAMES
 
 
 def get_brain_cmap(mpl_colorname='inferno'):
@@ -101,3 +102,27 @@ def get_subject_data(subject, task):
     nii = nib.load(fn)
     return nii
 
+def get_metric_nii_subject(subject, task, metric, filter_by_age=0, slrad=5):
+    task = task.lower()
+    if task == 'smt': task = task.upper()
+    if metric == 'optt' or metric == 'autocorr':
+        dirname = f'{CAMCAN_RESULTS_DIR}/TPHATE_optt/LOSO'
+    elif metric == 'ISC':
+        dirname = f'{CAMCAN_RESULTS_DIR}/ISC/LOSO'
+    elif metric in METHOD_NAMES:
+        dirname = f'{CAMCAN_RESULTS_DIR}/IDE/LOSO'
+    else:
+        print(f'{metric} not found')
+        return
+    
+    if filter_by_age != 0 and metric == 'ISC':
+        filter_string=f'_filter_{filter_by_age}'
+    else:
+        filter_string=f''
+        
+    # print(f'{dirname}/{subject}{filter_string}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')
+    fn = glob.glob(f'{dirname}/{subject}{filter_string}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')[0]
+    return nib.load(fn)
+    
+    
+    

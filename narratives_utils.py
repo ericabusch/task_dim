@@ -6,6 +6,7 @@ from config import *
 import pandas as pd
 import seaborn as sns
 import matplotlib
+from ide_helpers import METHOD_NAMES
 
 
 def get_brain_cmap(mpl_colorname='inferno'):
@@ -49,7 +50,11 @@ def determine_intersecting_subjects(narratives_dir=None, task_list=[]):
     return sorted(list(intersection))
 
 def get_intersecting_subjects(subject_filter=0):
-    return NARRATIVES_SUBJECTS
+    # temporarily remove these
+    exclude = ['sub-309','sub-306','sub-303','sub-305','sub-298']
+    n = NARRATIVES_SUBJECTS
+    n = [N for N in n if N not in exclude]
+    return n
 
 def get_tasks():
     return list(NARRATIVES_DATA_DIRS.keys())
@@ -81,4 +86,25 @@ def get_intersect_mask(subject_filter=0):
     fn = NARRATIVES_INTERSECT_MASK
     return nib.load(fn)
 
+def get_metric_nii_subject(subject, task, metric, filter_by_age=0, slrad=5):
+    if metric == 'optt' or metric == 'autocorr':
+        dirname = f'{NARRATIVES_RESULTS_DIR}/TPHATE_optt/LOSO'
+    elif metric == 'ISC':
+        dirname = f'{NARRATIVES_RESULTS_DIR}/ISC/LOSO'
+    else:
+        dirname = f'{NARRATIVES_RESULTS_DIR}/IDE/LOSO'
+    
+    try:
+        task=task.upper()
+        fn = glob.glob(f'{dirname}/{subject}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')[0]
+    except:
+        try:
+            task=task.lower()
+            fn = glob.glob(f'{dirname}/{subject}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')[0]
+        except:
+            print(f'nothing found for {subject}, {task}')
+            return
+    return nib.load(fn)
 
+def get_tasks():
+    return list(NARRATIVES_DATA_DIRS.keys())

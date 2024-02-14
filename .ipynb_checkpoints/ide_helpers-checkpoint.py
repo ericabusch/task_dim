@@ -3,8 +3,9 @@ from sklearn.metrics import pairwise_distances
 from skdim import id
 import phate, tphate
 from numpy import linalg
+from sklearn.decomposition import PCA
 
-def compute_diffusion_matrix(X : np.array, knn: int=5, density_norm_pow: float = 1.0):
+def compute_diffusion_matrix(X : np.array, knn: int=20, density_norm_pow: float = 1.0):
     """
     Adapted from
     https://github.com/professorwug/diffusion_curvature/blob/master/diffusion_curvature/core.py
@@ -50,20 +51,66 @@ def compute_diffusion_matrix(X : np.array, knn: int=5, density_norm_pow: float =
 
     return P
 
-def compute_phate_diffusion_operator(X, knn=5, t=0):
+def compute_phate_SE_at_t(X, knn=5, t=0):
     if t == 0: t = 'auto'
     op = phate.PHATE(verbose=0, knn=knn, t=t)
     y = op.fit_transform(X)
-    print('phate t: ',op.optimal_t)
-    return op.diff_op
+    opt_t = op.optimal_t
+    all_t, entropies = op._von_neumann_entropy()
+    idx = np.where(all_t == opt_t)
+    ent = entropies[idx]
+    return ent 
 
-def compute_tphate_diffusion_operator(X, knn=5, t=0):
+def compute_tphate_SE_at_t(X, knn=20, t=0):
     if t == 0: t = 'auto'
     op = tphate.TPHATE(verbose=0, knn=knn, t=t)
     y = op.fit_transform(X)
-    print('tphate t: ',op.optimal_t)
+    opt_t = op.optimal_t
+    all_t, entropies = op._von_neumann_entropy()
+    idx = np.where(all_t == opt_t)
+    
+    ent = entropies[idx]
+    return ent 
+
+def compute_phate_diffusion_operator(X, knn=20, t=4):
+    if t == 0: t = 'auto'
+    op = phate.PHATE(verbose=0, knn=knn, t=t)
+    y = op.fit_transform(X)
     return op.diff_op
 
+def compute_tphate_diffusion_operator(X, knn=20, t=0):
+    if t == 0: t = 'auto'
+    op = tphate.TPHATE(verbose=0, knn=knn, t=t)
+    y = op.fit_transform(X)
+    return op.diff_op
+
+def compute_tphate_t(X, knn=20, smooth_window=1):
+    op = tphate.TPHATE(verbose=0, knn=knn, smooth_window=smooth_window)
+    y = op.fit_transform(X)
+    return op.optimal_t
+
+def compute_phate_t(X, knn=20):
+    op = phate.PHATE(verbose=0, knn=knn)
+    y = op.fit_transform(X)
+    return op.optimal_t
+
+def compute_tphate_fisherS(X, knn=5, t=0):
+    P = compute_tphate_diffusion_operator(X, knn, t)
+    return compute_FisherS(P)
+
+def compute_phate_fisherS(X, knn=5, t=0):
+    P = compute_phate_diffusion_operator(X, knn, t)
+    return compute_FisherS(P)
+
+def compute_diffusion_map_fisherS(X, knn=20, t=0):
+    P = compute_diffusion_matrix(X, knn)
+    return compute_FisherS(P)
+
+def compute_PCA_dim(X, threshold=.90):
+    pca = PCA()
+    pca.fit(X)
+    cum_var_exp = np.cumsum(pca.explained_variance_ratio_)
+    return np.where(cum_var_exp >= threshold)[0][0]
 
 def spectral_entropy(P, eps=1e-3):
     eigenvalues, _ = np.linalg.eig(P)
@@ -75,18 +122,37 @@ def spectral_entropy(P, eps=1e-3):
     entropy = -np.sum(normalized_eigenvalues * np.log(normalized_eigenvalues))
     return entropy
 
-def compute_phate_SE(X):
-    P = compute_phate_diffusion_operator(X)
+def compute_phate_SE_delta(X, knn=20):
+    ## takes the difference between SE @ t=0 and SE at t=optimal
+    op = phate.PHATE(verbose=0, knn=knn, t='auto')
+    y = op.fit_transform(X)
+    opt_t = op.optimal_t
+    all_t, entropies = op._von_neumann_entropy()
+    idx = np.where(all_t == opt_t)[0][0]
+    delta = entropies[0] - entropies[idx]
+    return opt_t, entropies[0], entropies[idx], delta
+    
+def compute_tphate_SE_delta(X, knn=20):
+    op = tphate.TPHATE(verbose=0, knn=knn, t='auto', smooth_window=1)
+    y = op.fit_transform(X)
+    opt_t = op.optimal_t
+    all_t, entropies = op._von_neumann_entropy()
+    idx = np.where(all_t == opt_t)[0][0]
+    delta = entropies[0] - entropies[idx]
+    return opt_t, entropies[0], entropies[idx], delta
+
+def compute_phate_SE(X, knn=5, t=1):
+    P = compute_phate_diffusion_operator(X, knn, t)
     ide = spectral_entropy(P)
     return ide
 
-def compute_tphate_SE(X):
-    P = compute_tphate_diffusion_operator(X)
+def compute_tphate_SE(X, knn=5, t=1):
+    P = compute_tphate_diffusion_operator(X, knn, t)
     ide = spectral_entropy(P)
     return ide
 
-def compute_diffusion_matrix_SE(X):
-    P = compute_diffusion_matrix(X)
+def compute_diffusion_matrix_SE(X, knn=5, t=1):
+    P = compute_diffusion_matrix(X, knn)
     ide = spectral_entropy(P)
     return ide
 
@@ -122,6 +188,18 @@ METHODS = {'PHATE_SE': compute_phate_SE,
           'KNN': compute_KNN,
           'FisherS':compute_FisherS, 
           'CorrInt':compute_CorrInt, 
-          'lPCA':compute_lPCA}
+          'lPCA':compute_lPCA,
+          'TPHATE_FisherS':compute_tphate_fisherS,
+           'PHATE_FisherS':compute_phate_fisherS,
+           'DIFF_MAP_FisherS':compute_diffusion_map_fisherS,
+           'TPHATE_SE_at_t':compute_tphate_SE_at_t,
+           'PHATE_SE_at_t':compute_phate_SE_at_t,
+           'PCA':compute_PCA_dim,
+           'PHATE_SE_delta':compute_phate_SE_delta,
+           'TPHATE_SE_delta':compute_tphate_SE_delta,
+           'TPHATE_optt':compute_tphate_t,
+           'PHATE_optt':compute_phate_t,
+           
+          }
 
 METHOD_NAMES = sorted(METHODS.keys())

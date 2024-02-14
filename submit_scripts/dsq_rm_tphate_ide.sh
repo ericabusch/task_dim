@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --output /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/submit_scripts/log/%A_%3a.out
-#SBATCH --array 0-32
+#SBATCH --array 0-197
 #SBATCH -p psych_day,psych_week
 #SBATCH -t 6:00:00
 #SBATCH --mem-per-cpu 3G        

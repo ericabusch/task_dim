@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --output /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/submit_scripts/log/%A_%3a.out
-#SBATCH --array 0-32
+#SBATCH --array 0-351
 #SBATCH -p psych_day,psych_week
-#SBATCH -t 6:00:00
+#SBATCH -t 10:00:00
 #SBATCH --mem-per-cpu 3G        
 #SBATCH -n 8  
 #SBATCH --mail-type=all
-#SBATCH --job-name dsq-rm-tphate-ide
+#SBATCH --job-name dsq-cc-dmse
 
 # Set up the environment
 module load miniconda
@@ -15,4 +15,4 @@ conda activate env_tda
 
 
 # DO NOT EDIT LINE BELOW
-/gpfs/milgram/apps/hpc.rhel7/software/dSQ/1.05/dSQBatch.py --job-file /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/joblists/RM_tphate_optt_joblist.txt --status-dir /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/submit_scripts/log
+/gpfs/milgram/apps/hpc.rhel7/software/dSQ/1.05/dSQBatch.py --job-file /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/joblists/camcan_DMSE_joblist.txt --status-dir /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/submit_scripts/log
