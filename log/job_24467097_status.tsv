@@ -1,1 +1,0 @@
-0	0	r811u01n09.milgram.hpc.yale.internal	2023-07-25 19:17:44	2023-07-25 19:39:42	1318.06	srun --mpi=pmi2 python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/searchlight_isc.py -d narratives -t BLACK -i 0 -r 5 -s 0
