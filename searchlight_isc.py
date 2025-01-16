@@ -15,6 +15,8 @@ from nilearn.maskers import NiftiMasker, NiftiLabelsMasker
 from brainiak.searchlight.searchlight import Searchlight
 import tphate
 import scprep
+from nibabel.nifti1 import Nifti1Image
+
 from sklearn.decomposition import PCA
 import warnings
 warnings.filterwarnings("ignore")
@@ -24,7 +26,7 @@ from mpi4py import MPI
 def load_data(sub_id, task):
     
     # Load bold data and some header information so that we can save searchlight results as nifti later.
-    nii = utils.get_subject_data(sub_id, task)
+    nii = utils.get_subject_data(sub_id, task, trim=True)
     # Load mask
     brain_mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
     masker_wb = NiftiMasker(mask_img=brain_mask, standardize=True)
@@ -36,7 +38,6 @@ def load_data(sub_id, task):
     dimensions = masked_nii.header.get_zooms() 
     
     return bold_data, brain_mask.get_fdata(), affine_mat, dimensions
-
 
 def isc_kernel(data, sl_mask, myrad, bcvar):
     num_voxels_in_sl = sl_mask.shape[0] * sl_mask.shape[1] * sl_mask.shape[2]
@@ -56,7 +57,7 @@ if __name__ == '__main__':
     parser.add_argument('-t','--task', type=str)
     parser.add_argument('-i', '--held_out_idx', type=int)
     parser.add_argument('-r','--sl_rad', type=int, default=5)
-    parser.add_argument('-s','--subject_filter', type=int, default=0)
+    parser.add_argument('-s','--subject_filter', type=str, default="0")
     parser.add_argument('-v','--verbose', type=int, default=1)
     parser.add_argument('-o', '--overwrite', type=int, default=1)
     parser.add_argument('-p', '--plot', type=int, default=0)
@@ -74,6 +75,8 @@ if __name__ == '__main__':
     if p.dataset.lower() == 'narratives': import narratives_utils as utils
     elif p.dataset.lower() == 'rest_movie': import RM_utils as utils
     elif p.dataset.lower() == 'camcan': import camcan_utils as utils
+    elif p.dataset.lower() == 'infant_rest_movie': import RM_infant_utils as utils
+    elif p.dataset.lower() == 'cneuromod': import CNM_utils as utils
     else: print(f'{p.dataset} not valid');  sys.exit(1)
     if p.verbose and rank == 0: print(f'loaded {p.dataset}_utils')
 
@@ -85,8 +88,11 @@ if __name__ == '__main__':
         sys.exit(2)
     test_subject = ALL_SUBJECTS[p.held_out_idx]
     train_subjects = [s for s in np.setdiff1d(ALL_SUBJECTS, test_subject)]
-    outdir = os.path.join(utils.get_results_dir(), 'ISC', 'LOSO')
+    outdir = os.path.join(utils.get_scratch_dir(), 'ISC', 'LOSO', 'results')
+    plot_outdir = os.path.join(utils.get_scratch_dir().replace('results', 'plots'), 'ISC', 'LOSO')
     os.makedirs(outdir, exist_ok=True)
+    os.makedirs(plot_outdir, exist_ok=True)
+    
     output_name = os.path.join(outdir, f'{test_subject}_filter_{p.subject_filter}_{p.task}_ISC_whole_brain_SL_rad{p.sl_rad}.nii.gz')
 
     if not p.overwrite and os.path.exists(output_name):
@@ -118,9 +124,10 @@ if __name__ == '__main__':
             d, _, _, _ = load_data(train_sub, p.task)
             if i == 0: train_data = d
             else: train_data = np.add(train_data, d)
+        train_data /= len(train_subjects)
     data_list.append(train_data)
-    mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
-    wb_mask = mask.get_fdata()
+    
+    brain_mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
     if rank == 0 and p.verbose: print(f'{np.sum(wb_mask)} voxels in mask')
     # set up searchlight
     sl = Searchlight(sl_rad=p.sl_rad, max_blk_edge=max_blk_edge, min_active_voxels_proportion=percent_active)
@@ -140,7 +147,9 @@ if __name__ == '__main__':
 
     # save and plot results on rank 1
     result_vec = sl_result[wb_mask==1]
-    if p.verbose: print(f'result vec of shape: {result_vec.shape}')
+    new_output = output_name.replace('.nii.gz','vectorized.npy')
+    np.save(new_output, result_vec)
+    if p.verbose: print(f'result vec of shape: {result_vec.shape}; saving to {new_output}')
     result_vol = np.zeros((wb_mask.shape[0], wb_mask.shape[1], wb_mask.shape[2]))
     aff = affines[0]
     dimsize = dimsizes[0]
@@ -148,7 +157,7 @@ if __name__ == '__main__':
     result_vol = np.nan_to_num(result_vol.astype('double'))
     sl_nii = nib.Nifti1Image(result_vol, aff)
     # mask non-brain
-    masker_wb_plot = NiftiMasker(mask_img=mask, standardize=False)
+    masker_wb_plot = NiftiMasker(mask_img=brain_mask, standardize=False)
     masked_sl_res = masker_wb_plot.fit_transform(sl_nii)
     masked_sl_res = masker_wb_plot.inverse_transform(masked_sl_res).get_fdata()[:,:,:,0]
     sl_nii = nib.Nifti1Image(masked_sl_res, affine_mat)

@@ -8,4 +8,8 @@
 */log
 *__pycache__/
 *nilearn_cache/
+*.ipynb
+bkup*
+code_from_TLB/
+log/*
 

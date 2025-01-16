@@ -13,9 +13,11 @@ from scipy import stats
 from nilearn import plotting
 from nilearn.maskers import NiftiMasker, NiftiLabelsMasker
 from brainiak.searchlight.searchlight import Searchlight
-import tphate, phate, skdim
+import tphate, phate
 import ide_helpers as ide
 import warnings
+from nibabel.nifti1 import Nifti1Image
+
 warnings.filterwarnings("ignore")
 
 # Load in MPI
@@ -35,7 +37,9 @@ def load_data(sub_id, task):
     affine_mat = masked_nii.affine
     dimensions = masked_nii.header.get_zooms() 
     
-    return bold_data, brain_mask.get_fdata(), affine_mat, dimensions
+    M = brain_mask.get_fdata()
+    
+    return bold_data, M, affine_mat, dimensions
 
 
 def IDE_kernel(data, sl_mask, myrad, bcvar):
@@ -53,8 +57,17 @@ def IDE_kernel(data, sl_mask, myrad, bcvar):
     R = []
     for meth_name in METHODS_HERE:
         func = ide.METHODS[meth_name]
-        R.append(func(data_arr))
-    
+        try:
+            res = func(data_arr)
+        except:
+            res=np.nan
+        # account for the fact that TPHATE_DiffOp_IDE returns 3 things
+        # tph_eigh_i, ph_eigh_i, tph.optimal_t
+        if type(res) == tuple:
+            for r in res:
+                R.append(r)
+        else:
+            R.append(res)
     return R
 
 if __name__ == '__main__':
@@ -64,7 +77,7 @@ if __name__ == '__main__':
     parser.add_argument('-t','--task', type=str)
     parser.add_argument('-i', '--subject_idx', type=int)
     parser.add_argument('-r','--sl_rad', type=int, default=5)
-    parser.add_argument('-s','--subject_filter', type=int, default=0)
+    parser.add_argument('-s','--subject_filter', type=str, default='0')
     parser.add_argument('-v','--verbose', type=int, default=1)
     parser.add_argument('-o', '--overwrite', type=int, default=1)
     parser.add_argument('-p', '--plot', type=int, default=0)
@@ -81,12 +94,20 @@ if __name__ == '__main__':
     if p.dataset.lower() == 'narratives': import narratives_utils as utils
     elif p.dataset.lower() == 'rest_movie': import RM_utils as utils
     elif p.dataset.lower() == 'camcan': import camcan_utils as utils
-    else: print(f'{p.dataset} not valid');  sys.exit(1)
+    elif p.dataset.lower() == 'infant_rest_movie': import RM_infant_utils as utils
+    elif p.dataset.lower() == 'cneuromod': import CNM_utils as utils
+    else: 
+        print(f'{p.dataset} not valid')  
+        sys.exit(1)
     if p.verbose and rank == 0: print(f'loaded {p.dataset}_utils')
     
     # THIS WAS CHANGED
-    METHODS_HERE = ['PCA']
+    METHODS_HERE = ['TPHATE_DiffOp_IDE', 'MiND_ML', 'lPCA','PCA']#,'FisherS','KNN']
+    METHODS_OUTPUT_LABELS = ["TPH_diffop_eigdecomp", "TPH_OPTT"]+METHODS_HERE[1:]
     
+    KNN=config.KNN
+    THRESHOLD=config.THRESHOLD
+
      # load target subject
     ALL_SUBJECTS = utils.get_intersecting_subjects(subject_filter=p.subject_filter)
     # make sure the desired subject exists
@@ -94,11 +115,11 @@ if __name__ == '__main__':
         print(f'test subject idx {p.subject_idx} not in list of len {len(ALL_SUBJECTS)}')
         sys.exit(2)
     this_subject = ALL_SUBJECTS[p.subject_idx]
-    results_outdir = os.path.join(utils.get_results_dir(), 'IDE', 'LOSO')
-    plot_outdir = os.path.join(utils.get_results_dir().replace('results', 'plots'), 'IDE', 'LOSO')
+    results_outdir = os.path.join(utils.get_scratch_dir(), 'IDE', 'LOSO', 'results')
+    plot_outdir = os.path.join(utils.get_scratch_dir().replace('results', 'plots'), 'IDE', 'LOSO')
     os.makedirs(results_outdir, exist_ok=True)
     os.makedirs(plot_outdir, exist_ok=True)
-    output_name = os.path.join(results_outdir, f'{this_subject}_{p.task}_') ## THIS WAS CHANGED
+    output_name = os.path.join(results_outdir, f'{this_subject}_{p.task}_') 
     if not p.overwrite:
         fns = glob.glob(output_name+'*')
         if len(fns) != 0:
@@ -119,29 +140,30 @@ if __name__ == '__main__':
         data.append(None)
         wb_mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
         wb_mask = wb_mask.get_fdata()
-        
+
     # set up searchlight
-    sl = Searchlight(sl_rad=p.sl_rad, max_blk_edge=max_blk_edge)
+    sl = Searchlight(sl_rad=p.sl_rad, max_blk_edge=max_blk_edge, min_active_voxels_proportion=0.5)
     sl.distribute(data, wb_mask)
     sl.broadcast(bcvar)
     
     brain_mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
-
+    wb_mask=brain_mask.get_fdata()
     if p.verbose: print(f"Begin Searchlight in rank {rank}")
     all_sl_result = sl.run_searchlight(IDE_kernel, pool_size=pool_size)
     if p.verbose: print(f"End Searchlight in rank {rank}")
     coords = np.where(wb_mask==1)
-
+    cmap='magma'
     if rank != 0: print(f'exiting rank {rank}'); sys.exit(0)
 
     if rank == 0: 
-        if p.verbose: print(f'results of shape: {np.shape(all_sl_result)}')
         result_vec = all_sl_result[coords]
-        N = len(ide.METHOD_NAMES)
+        new_output = output_name.replace('.nii.gz','vectorized.npy')
+        np.save(new_output, result_vec)
+        if p.verbose: print(f'results of shape: {np.shape(all_sl_result)}; saved to {output_name}_all_IDE_results_vectorized_rad_{p.sl_rad}.npy')
+        N = len(METHODS_OUTPUT_LABELS)
         result_vec = [N*[0] if not n else n for n in result_vec] # replace all None
         
-        for i, nm in zip(np.arange(N), METHODS_HERE):
-        #for i, nm in zip(np.arange(N), ide.METHOD_NAMES):  ## THIS WAS CHANGED
+        for i, nm in zip(np.arange(N), METHODS_OUTPUT_LABELS):
             result_vol = np.zeros_like(wb_mask)
             res = [r[i] for r in result_vec]
             result_vol[coords] = res
@@ -163,7 +185,7 @@ if __name__ == '__main__':
             if p.verbose: print(f"Saved result to {out_fn}")
             if p.plot: 
                 if p.verbose: print(f"Saved result to {out_fn}; plotting")
-                title = f'{p.dataset} {p.task} {this_subject} tphate {nm} sl radius={p.sl_rad}'
+                title = f'{p.dataset} {p.task} {this_subject} {nm} sl radius={p.sl_rad}'
                 plotting.plot_stat_map(out_fn, output_file=output_name.replace('.nii.gz', '_statmap.png').replace('results','plots'), colorbar=True, threshold=0, cmap=cmap, title=title)
 
 

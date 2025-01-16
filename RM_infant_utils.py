@@ -12,19 +12,21 @@ from nilearn.image import index_img
 def determine_intersecting_subjects(basedir=None, task_list=[]):
     if len(task_list) == 0:
         task_list = list(RM_INFANT_DATA_DIRS.keys())
-    
-    subjects_by_task = []
+    subjects_by_task = {}
     for t in task_list:
         d = RM_INFANT_DATA_DIRS[t]
-        filenames = sorted(glob.glob(f'{d}/{RM_INFANT_STRING_MATCH}'))
-        subjects = [f.split('/')[-1].split('_')[0] for f in filenames]
-        subjects_by_task.append(subjects)
-    intersection = set.intersection(*map(set, [subjects_by_task[i] for i in range(len(RM_INFANT_DATA_DIRS.keys()))]))
-
-    return sorted(list(intersection))
+        filenames = sorted(glob.glob(f'{d}/s*{RM_INFANT_STRING_MATCH[t]}*'))
+        subjects = []
+        for f in filenames:
+            f1 = f.split('/')[-1]
+            s = f1.split('_')[:2]
+            subjects.append("_".join(s))
+        subjects_by_task[t] = list(set(subjects))
+    intersection = intersecting_items(subjects_by_task)
+    return sorted(intersection)
 
 def get_intersecting_subjects(subject_filter=0):
-    return RM_INFANTS
+	return INFANT_SUBJECTS_TASKS[subject_filter.lower()]
 
 def get_tasks():
     return list(RM_INFANT_DATA_DIRS.keys())
@@ -34,34 +36,50 @@ def get_results_dir():
     if not exists(d): os.makedirs(d)
     return d
 
+def get_out_dir():
+    d = RM_INFANT_OUTDIR
+    if not exists(d): os.makedirs(d, exist_ok=True)
+    return d
+
+def get_scratch_dir():
+    d = f'{SCRATCH_DIR}/InfantRestMovie/'
+    if not exists(d): os.makedirs(d, exist_ok=True)
+    return d
+
 def get_task_filenames(subject_list, task):
     '''
     this is useful for the script that makes intersect masks
     '''
 
-    data_dir = RM_INFANT_DATA_DIRS[task.upper()]
+    data_dir = RM_INFANT_DATA_DIRS[task.lower()]
     filenames = []
     for s in subject_list:
-        f = glob.glob(RM_INFANT_DATA_DIRS[task.upper()]+f'/{s}*{RM_INFANT_STRING_MATCH}')
+        f = glob.glob(RM_INFANT_DATA_DIRS[task.lower()]+f'/{s}*{RM_INFANT_STRING_MATCH[task]}*')
         if len(f) == 0:
-            print(RM_INFANT_DATA_DIRS[task.upper()]+f'/{s}*{RM_INFANT_STRING_MATCH}')
+            print(RM_INFANT_DATA_DIRS[task.lower()]+f'/{s}*{RM_INFANT_STRING_MATCH[task]}*')
             continue
         filenames += f
     return filenames
     
-def get_subject_data(sub_id, task, trim=True):
-    fn = glob.glob(RM_INFANT_DATA_DIRS[task.upper()]+f'/{sub_id}*{RM_INFANT_STRING_MATCH}')[0]
+def get_subject_data(sub_id, task, trim=False):
+    #print(RM_INFANT_DATA_DIRS[task.lower()]+f'/{sub_id}*{RM_INFANT_STRING_MATCH[task]}*')
+    fn = glob.glob(RM_INFANT_DATA_DIRS[task.lower()]+f'/{sub_id}*{RM_INFANT_STRING_MATCH[task]}*')[0]
     nii = nib.load(fn)
     if trim:
-        nii = index_img(nii, np.arange(RM_TIMEPOINTS[task.upper()]))
+        nii = index_img(nii, np.arange(RM_INFANT_TIMEPOINTS[task.lower()]))
     return nii
 
 def get_basedir():
     return BASE_DIR_RM
 
-def get_intersect_mask(subject_filter=0):
-    fn = RM_INFANT_INTERSECT_MASK
-    return nib.load(fn)
+def get_intersect_mask(subject_filter='sleep'):
+	if subject_filter.lower() == 'sleep':
+		fn = SLEEP_INFANT_INTERSECT_MASK
+	elif subject_filter.lower() == 'mickey':
+		fn = MICKEY_INFANT_INTERSECT_MASK
+	else:
+		fn = AERONAUT_INFANT_INTERSECT_MASK
+	return nib.load(fn)
 
 def get_brain_cmap(mpl_colorname='inferno'):
     n = 40
@@ -70,3 +88,20 @@ def get_brain_cmap(mpl_colorname='inferno'):
     brain_cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", [color_list[i] for i in indices])
     return brain_cmap
 
+def get_metric_nii_subject(subject, task, metric, filter_by_age=0, slrad=5):
+    dirname = get_scratch_dir()
+    task = task.lower()
+    if metric == 'ISC':
+        dirname = f'{dirname}/ISC/LOSO/results'
+        filter_string = f'_filter_{filter_by_age}'
+    else:# metric in METHOD_NAMES:
+        dirname = f'{dirname}/IDE/LOSO/results'
+        filter_string=''
+    try:
+        #task = task.lower().capitalize()
+        fn = glob.glob(f'{dirname}/{subject}{filter_string}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')[0]
+    except:
+        #task = task.lower()
+        print(f'{dirname}/{subject}{filter_string}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')
+        fn = glob.glob(f'{dirname}/{subject}{filter_string}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')[0]
+    return nib.load(fn)

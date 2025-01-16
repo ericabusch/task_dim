@@ -14,9 +14,13 @@ import config
 from scipy import stats
 from nilearn import plotting
 from nilearn.maskers import NiftiMasker, NiftiLabelsMasker
+from nilearn.image import concat_imgs
 
 def load_mask_data_file(mask_coords, subject, task, metric, filter_by_age=0, slrad=5):
-    nii = utils.get_metric_nii_subject(subject, task, metric, filter_by_age=filter_by_age, slrad=slrad)
+    try:
+        nii = utils.get_metric_nii_subject(subject, task, metric, filter_by_age=filter_by_age, slrad=slrad)
+    except:
+        nii = None
     if nii == None:
         z = np.zeros(len(mask_coords[0]))
         z[:] = np.nan
@@ -43,13 +47,18 @@ if __name__ == '__main__':
     parser.add_argument('-v','--verbose', type=int, default=1)
     parser.add_argument('-o', '--overwrite', type=int, default=1)
     parser.add_argument('-p', '--plot', type=int, default=1)
-    parser.add_argument('-s','--subject_filter',type=int, default=0)
+    parser.add_argument('-s','--subject_filter',type=str, default="0")
     p = parser.parse_args()
     
     
     if p.dataset.lower() == 'narratives': import narratives_utils as utils
     elif p.dataset.lower() == 'rest_movie': import RM_utils as utils
     elif p.dataset.lower() == 'camcan': import camcan_utils as utils
+    elif p.dataset.lower() == 'cneuromod': import CNM_utils as utils
+    elif p.dataset.lower() == 'infant_rest_movie': 
+        import RM_infant_utils as utils
+        p.subject_filter = p.task
+
     else: print(f'{p.dataset} not valid');  sys.exit(1)
     
     brain_mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
@@ -60,7 +69,12 @@ if __name__ == '__main__':
     
     subject_vectors = []
     for s in all_subjects:
-        subject_vectors.append(load_mask_data_file(mask_coords, s, p.task, p.metric, p.subject_filter, p.sl_rad))
+        n = load_mask_data_file(mask_coords, s, p.task, p.metric, p.subject_filter, p.sl_rad)
+        if np.sum(n!=n) > 1: 
+            print(f'skipping {s}')
+        else:
+            print(f'loaded {s}')
+            subject_vectors.append(n)
     subject_vectors=np.array(subject_vectors)
     if p.verbose: print(f'Loaded {len(subject_vectors)} files; final shape: {subject_vectors.shape}')
     
@@ -68,15 +82,26 @@ if __name__ == '__main__':
     os.makedirs(outdir, exist_ok=True)
     outfn = f'{outdir}/{p.task.lower()}_{p.metric}_all_subject_results.npy'
     np.save(outfn, subject_vectors)
+    outfn = f'{outdir}/{p.task.lower()}_{p.metric}_average_results.npy'
+    np.save(outfn, np.mean(subject_vectors,axis=0))
+    
     if p.verbose: print(f'saved to {outfn}')
     
+    # stack all the results
+    outdir = f'{utils.get_results_dir()}/result_volumes'
+    os.makedirs(outdir, exist_ok=True)
+    cc_img = concat_imgs([vec2vol(subject_vectors[i], brain_mask) for i in range(len(subject_vectors))])
+    outfn = f'{outdir}/{p.task.lower()}_{p.metric}_all_subjects.nii.gz'
+    nib.save(cc_img, outfn)
+
     # average
     avg = np.nanmean(subject_vectors, axis=0)
     avg_nii = vec2vol(avg, brain_mask)
-    outdir = f'{utils.get_results_dir()}/result_volumes'
-    os.makedirs(outdir, exist_ok=True)
     outfn = f'{outdir}/{p.task.lower()}_{p.metric}_average_result.nii.gz'
     nib.save(avg_nii, outfn)
+    
+    
+
     if p.verbose: print(f'saved res of shape {avg_nii.shape} to {outfn}')
     
     if p.plot: 

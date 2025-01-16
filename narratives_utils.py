@@ -59,6 +59,21 @@ def get_intersecting_subjects(subject_filter=0):
 def get_tasks():
     return list(NARRATIVES_DATA_DIRS.keys())
 
+def get_out_dir():
+    d = NARRATIVES_OUTDIR
+    if not exists(d): os.makedirs(d)
+    return d
+
+def get_scratch_dir():
+    d = f'{SCRATCH_DIR}/Narratives/'
+    if not exists(d): 
+        os.makedirs(d, exist_ok=True)
+        os.makedirs(d+'IDE/LOSO/results', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO/plots', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO/results', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO/plots', exist_ok=True)
+    return d
+
 def get_results_dir():
     d = NARRATIVES_RESULTS_DIR
     if not exists(d): os.makedirs(d)
@@ -68,11 +83,11 @@ def get_task_filenames(subject_list, task):
     data_dir = NARRATIVES_DATA_DIRS[task.upper()]
     filenames = []
     for s in subject_list:
-        f = glob.glob(NARRATIVES_DATA_DIRS[task.upper()]+f'/{sub_id}*.nii.gz')[0]
-        filenames += f
+        f = glob.glob(NARRATIVES_DATA_DIRS[task.upper()]+f'/{s}*.nii.gz')[0]
+        filenames.append(f)
     return filenames
     
-def get_subject_data(sub_id, task):
+def get_subject_data(sub_id, task,trim=False):
     if 'sub' not in sub_id:
         sub_id = f'sub-{sub_id}'
     fn = glob.glob(NARRATIVES_DATA_DIRS[task.upper()]+f'/{sub_id}*.nii.gz')[0]
@@ -87,20 +102,19 @@ def get_intersect_mask(subject_filter=0):
     return nib.load(fn)
 
 def get_metric_nii_subject(subject, task, metric, filter_by_age=0, slrad=5):
-    if metric == 'optt' or metric == 'autocorr':
-        dirname = f'{NARRATIVES_RESULTS_DIR}/TPHATE_optt/LOSO'
-    elif metric == 'ISC':
-        dirname = f'{NARRATIVES_RESULTS_DIR}/ISC/LOSO'
+    if metric == 'ISC':
+        dirname = f'{SCRATCH_DIR}/Narratives/ISC/LOSO/results'
     else:
-        dirname = f'{NARRATIVES_RESULTS_DIR}/IDE/LOSO'
+        dirname = f'{SCRATCH_DIR}/Narratives/IDE/LOSO/results'
     
     try:
         task=task.upper()
-        fn = glob.glob(f'{dirname}/{subject}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')[0]
+        fn = glob.glob(f'{dirname}/{subject}_{task}*{metric}_whole_brain_SL_rad{slrad}.nii.gz')[0]
+
     except:
         try:
             task=task.lower()
-            fn = glob.glob(f'{dirname}/{subject}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')[0]
+            fn = glob.glob(f'{dirname}/{subject}_{task}*{metric}_whole_brain_SL_rad{slrad}.nii.gz')[0]
         except:
             print(f'nothing found for {subject}, {task}')
             return

@@ -1,0 +1,17 @@
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t sleep -m TPH_diffop_eigdecomp
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t sleep -m TPH_OPTT
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t sleep -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t sleep -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t sleep -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t mickey -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t mickey -m TPH_diffop_eigdecomp
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t mickey -m TPH_OPTT
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t mickey -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t mickey -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t mickey -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t aeronaut -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t aeronaut -m TPH_diffop_eigdecomp
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t aeronaut -m TPH_OPTT
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t aeronaut -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t aeronaut -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_subject_results.py -d infant_rest_movie -t aeronaut -m PCA

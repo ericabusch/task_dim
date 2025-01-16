@@ -4,202 +4,80 @@ from skdim import id
 import phate, tphate
 from numpy import linalg
 from sklearn.decomposition import PCA
+      
+def diffop_eig_ide(P, threshold=0.9, knn=5):
+    eigvals, _ = np.linalg.eig(P)
+    eigvals_sorted=np.squeeze(sorted((eigvals))[::-1])
+    eig_norm=eigvals_sorted/np.sum(eigvals_sorted)
+    i=np.where(np.cumsum(eig_norm) >= threshold)[0][0]+1
+    return i
 
-def compute_diffusion_matrix(X : np.array, knn: int=20, density_norm_pow: float = 1.0):
-    """
-    Adapted from
-    https://github.com/professorwug/diffusion_curvature/blob/master/diffusion_curvature/core.py
+def compute_tphate_phate_ide(X, threshold=0.9, knn=5):
+    tph=tphate.TPHATE(verbose=0,knn=knn)
+    y=tph.fit_transform(X)
+    tph_eigh_i = diffop_eig_ide(tph.diff_op,threshold)
+    ph_eigh_i = diffop_eig_ide(tph.phate_diffop,threshold)
+    return tph_eigh_i, ph_eigh_i, tph.optimal_t
 
-    Given input X returns a diffusion matrix P, as an numpy ndarray.
-    Using "adaptive anisotropic" kernel
-    Inputs:
-        X: a numpy array of size n x d
-        k: k-nearest-neighbor parameter
-        density_norm_pow: a float in [0, 1]
-            == 0: classic Gaussian kernel
-            == 1: completely removes density and provides a geometric equivalent to
-                  uniform sampling of the underlying manifold
-    Returns:
-        P: a numpy array of size n x n that is the diffusion matrix
-    """
-    # Construct the distance matrix.
-    D = pairwise_distances(X)
+def other_eig_diffop(P, threshold=0.9, knn=5, eps=1e-3):
+    eigvals, _ = np.linalg.eig(P)
+    eigvals = eigvals[eigvals>eps]
+    eigvals_sorted=np.squeeze(sorted((eigvals))[::-1])
+    eig_norm=eigvals_sorted/np.sum(eigvals_sorted)
+    i=np.where(np.cumsum(eig_norm) >= threshold)[0][0]+1
+    return i
 
-    # In case N <= K
-    assert X.shape[0] > 1
-    k = min(knn, X.shape[0] - 1)
+def compute_tphate_ide(X,threshold=0.9,knn=5):
+    tph=tphate.TPHATE(verbose=0,knn=knn)
+    y=tph.fit_transform(X)
+    tph_eig_i = diffop_eig_ide(tph.diff_op,threshold)
+    other_eig_i = other_eig_diffop(tph.diff_op,threshold)
+    return tph_eig_i, tph.optimal_t, other_eig_i
 
-    # Get the distance to the k-th neighbor.
-    distance_to_k_neighbor = np.partition(D, k)[:, k]
-
-    # Populate matrices with this distance for easy division.
-    div1 = np.ones(len(D))[:, None] @ distance_to_k_neighbor[None, :]
-    div2 = distance_to_k_neighbor[:, None] @ np.ones(len(D))[None, :]
-
-    # Compute the gaussian kernel with an adaptive bandwidth
-    W = (1 / np.sqrt(2 * np.pi)) * (np.exp(-D**2 / (2 * div1**2)) / div1 +
-                                    np.exp(-D**2 / (2 * div2**2)) / div2)
-
-    # Anisotropic density normalization.
-    if density_norm_pow > 0:
-        Deg = np.diag(1 / np.sum(W, axis=1)**density_norm_pow)
-        W = Deg @ W @ Deg
-
-    # Turn affinity matrix into diffusion matrix.
-    Deg = np.diag(1 / np.sum(W, axis=1))
-    P = Deg @ W
-
-    return P
-
-def compute_phate_SE_at_t(X, knn=5, t=0):
-    if t == 0: t = 'auto'
-    op = phate.PHATE(verbose=0, knn=knn, t=t)
-    y = op.fit_transform(X)
-    opt_t = op.optimal_t
-    all_t, entropies = op._von_neumann_entropy()
-    idx = np.where(all_t == opt_t)
-    ent = entropies[idx]
-    return ent 
-
-def compute_tphate_SE_at_t(X, knn=20, t=0):
-    if t == 0: t = 'auto'
-    op = tphate.TPHATE(verbose=0, knn=knn, t=t)
-    y = op.fit_transform(X)
-    opt_t = op.optimal_t
-    all_t, entropies = op._von_neumann_entropy()
-    idx = np.where(all_t == opt_t)
-    
-    ent = entropies[idx]
-    return ent 
-
-def compute_phate_diffusion_operator(X, knn=20, t=4):
-    if t == 0: t = 'auto'
-    op = phate.PHATE(verbose=0, knn=knn, t=t)
-    y = op.fit_transform(X)
-    return op.diff_op
-
-def compute_tphate_diffusion_operator(X, knn=20, t=0):
-    if t == 0: t = 'auto'
-    op = tphate.TPHATE(verbose=0, knn=knn, t=t)
-    y = op.fit_transform(X)
-    return op.diff_op
-
-def compute_tphate_t(X, knn=20, smooth_window=1):
-    op = tphate.TPHATE(verbose=0, knn=knn, smooth_window=smooth_window)
-    y = op.fit_transform(X)
-    return op.optimal_t
-
-def compute_phate_t(X, knn=20):
-    op = phate.PHATE(verbose=0, knn=knn)
-    y = op.fit_transform(X)
-    return op.optimal_t
-
-def compute_tphate_fisherS(X, knn=5, t=0):
-    P = compute_tphate_diffusion_operator(X, knn, t)
-    return compute_FisherS(P)
-
-def compute_phate_fisherS(X, knn=5, t=0):
-    P = compute_phate_diffusion_operator(X, knn, t)
-    return compute_FisherS(P)
-
-def compute_diffusion_map_fisherS(X, knn=20, t=0):
-    P = compute_diffusion_matrix(X, knn)
-    return compute_FisherS(P)
-
-def compute_PCA_dim(X, threshold=.90):
+def compute_PCA_dim(X, threshold=0.9, knn=5):
     pca = PCA()
     pca.fit(X)
     cum_var_exp = np.cumsum(pca.explained_variance_ratio_)
     return np.where(cum_var_exp >= threshold)[0][0]
 
-def spectral_entropy(P, eps=1e-3):
-    eigenvalues, _ = np.linalg.eig(P)
-    # Drop the trivial eigenvalue corresponding to the indicator eigenvector.
-    eigenvalues = np.abs(np.array(sorted(eigenvalues)[::-1])[1:])
-    # Drop the close-to-zero eigenvalue(s).
-    eigenvalues = eigenvalues[eigenvalues >= eps]
-    normalized_eigenvalues = eigenvalues / np.sum(eigenvalues)
-    entropy = -np.sum(normalized_eigenvalues * np.log(normalized_eigenvalues))
-    return entropy
-
-def compute_phate_SE_delta(X, knn=20):
-    ## takes the difference between SE @ t=0 and SE at t=optimal
-    op = phate.PHATE(verbose=0, knn=knn, t='auto')
-    y = op.fit_transform(X)
-    opt_t = op.optimal_t
-    all_t, entropies = op._von_neumann_entropy()
-    idx = np.where(all_t == opt_t)[0][0]
-    delta = entropies[0] - entropies[idx]
-    return opt_t, entropies[0], entropies[idx], delta
-    
-def compute_tphate_SE_delta(X, knn=20):
-    op = tphate.TPHATE(verbose=0, knn=knn, t='auto', smooth_window=1)
-    y = op.fit_transform(X)
-    opt_t = op.optimal_t
-    all_t, entropies = op._von_neumann_entropy()
-    idx = np.where(all_t == opt_t)[0][0]
-    delta = entropies[0] - entropies[idx]
-    return opt_t, entropies[0], entropies[idx], delta
-
-def compute_phate_SE(X, knn=5, t=1):
-    P = compute_phate_diffusion_operator(X, knn, t)
-    ide = spectral_entropy(P)
-    return ide
-
-def compute_tphate_SE(X, knn=5, t=1):
-    P = compute_tphate_diffusion_operator(X, knn, t)
-    ide = spectral_entropy(P)
-    return ide
-
-def compute_diffusion_matrix_SE(X, knn=5, t=1):
-    P = compute_diffusion_matrix(X, knn)
-    ide = spectral_entropy(P)
-    return ide
-
-def compute_MiND_ML(X):
+def compute_MiND_ML(X, threshold=0.9, knn=5):
     mod = id.MiND_ML()
     return mod.fit_transform(X)
 
-def compute_MLE(X):
+def compute_MLE(X, threshold=0.9, knn=5):
     mod = id.MLE()
     return mod.fit_transform(X)
 
-def compute_KNN(X):
+def compute_KNN(X, threshold=0.9, knn=5):
     mod = id.KNN()
     return mod.fit_transform(X)
 
-def compute_FisherS(X):
+def compute_FisherS(X, threshold=0.9, knn=5):
     mod = id.FisherS()
     return mod.fit_transform(X)
 
-def compute_lPCA(X):
+def compute_lPCA(X, threshold=0.9, knn=5):
     mod = id.lPCA()
     return mod.fit_transform(X)
 
-def compute_CorrInt(X):
+def compute_CorrInt(X, threshold=0.9, knn=5):
     mod = id.CorrInt()
     return mod.fit_transform(X)
 
-METHODS = {'PHATE_SE': compute_phate_SE, 
-           'TPHATE_SE': compute_tphate_SE,
-          'DIFF_MAP_SE': compute_diffusion_matrix_SE, 
+def compute_tphate_t(X, threshold=0.9, knn=5):
+    tph=tphate.TPHATE(verbose=0, knn=knn)
+    y=tph.fit_transform(X)
+    return tph.optimal_t
+
+METHODS = {'TPHATE_DiffOp_IDE':compute_tphate_ide,
           'MiND_ML':compute_MiND_ML, 
           'MLE': compute_MLE, 
-          'KNN': compute_KNN,
+          #'KNN': compute_KNN,
           'FisherS':compute_FisherS, 
-          'CorrInt':compute_CorrInt, 
+          #'CorrInt':compute_CorrInt, 
           'lPCA':compute_lPCA,
-          'TPHATE_FisherS':compute_tphate_fisherS,
-           'PHATE_FisherS':compute_phate_fisherS,
-           'DIFF_MAP_FisherS':compute_diffusion_map_fisherS,
-           'TPHATE_SE_at_t':compute_tphate_SE_at_t,
-           'PHATE_SE_at_t':compute_phate_SE_at_t,
            'PCA':compute_PCA_dim,
-           'PHATE_SE_delta':compute_phate_SE_delta,
-           'TPHATE_SE_delta':compute_tphate_SE_delta,
-           'TPHATE_optt':compute_tphate_t,
-           'PHATE_optt':compute_phate_t,
-           
+           'TPHATE_optt':compute_tphate_t
           }
 
 METHOD_NAMES = sorted(METHODS.keys())

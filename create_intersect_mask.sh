@@ -36,9 +36,4 @@ done
 fslmaths $mask_name -abs -thr 0 -bin -Tmean -thr 1 -bin $mask_name
 # mask with MNI
 echo averaged and binned
-# resample
-# MNI_mask=${FSLDIR}/data/linearMNI/MNI152lin_T1_2mm_brain_mask.nii.gz
-# flirt -in $MNI_mask -ref $mask_name -out temp.nii.gz -applyxfm
 
-# fslmaths $mask_name -mas temp.nii.gz $mask_name
-# echo masked with $MNI_mask resampled at temp.nii.gz

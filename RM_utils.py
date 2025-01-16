@@ -35,7 +35,17 @@ def get_tasks():
 
 def get_results_dir():
     d = RM_RESULTS_DIR
-    if not exists(d): os.makedirs(d)
+    if not exists(d): os.makedirs(d, exist_ok=True)
+    return d
+
+def get_out_dir():
+    d = RM_OUTDIR
+    if not exists(d): os.makedirs(d, exist_ok=True)
+    return d
+
+def get_scratch_dir():
+    d = f'{SCRATCH_DIR}/RestMovie/'
+    if not exists(d): os.makedirs(d, exist_ok=True)
     return d
 
 def get_task_filenames(subject_list, task):
@@ -70,8 +80,6 @@ def get_intersect_mask(subject_filter=0):
     return nib.load(fn)
 
 
-
-
 def get_brain_cmap(mpl_colorname='inferno'):
     if type(mpl_colorname)== str:
         n = 40
@@ -88,18 +96,13 @@ def get_brain_cmap(mpl_colorname='inferno'):
     return brain_cmap
 
 def get_metric_nii_subject(subject, task, metric, filter_by_age=0, slrad=5):
-    # if metric == 'optt' or metric == 'autocorr':
-    #     dirname = f'{RM_RESULTS_DIR}/TPHATE_optt/LOSO'
-    #     filter_string=''
+    dirname = get_scratch_dir()
     if metric == 'ISC':
-        dirname = f'{RM_RESULTS_DIR}/ISC/LOSO'
+        dirname = f'{dirname}/ISC/LOSO/results'
         filter_string = f'_filter_{filter_by_age}'
     else:# metric in METHOD_NAMES:
-        dirname = f'{RM_RESULTS_DIR}/IDE/LOSO'
+        dirname = f'{dirname}/IDE/LOSO/results'
         filter_string=''
-    # else:
-    #     print(f'{metric} not found')
-    #     return
     try:
         task = task.lower().capitalize()
         fn = glob.glob(f'{dirname}/{subject}{filter_string}_{task}*{metric}_whole_brain_SL_rad5.nii.gz')[0]
