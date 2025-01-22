@@ -15,6 +15,7 @@ echo Making $mask_name with $num_files files from $volume_filelist
 
 # Remove the intersect
 rm -f $mask_name
+rm -f $count_name
 
 for file in $filelist
 do

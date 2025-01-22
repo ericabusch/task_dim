@@ -23,10 +23,9 @@ warnings.filterwarnings("ignore")
 # Load in MPI
 from mpi4py import MPI
 
-def load_data(sub_id, task):
-    
+def load_data(sub_id, task, file_idx=0):
     # Load bold data and some header information so that we can save searchlight results as nifti later.
-    nii = utils.get_subject_data(sub_id, task)
+    nii = utils.get_subject_data(sub_id, task, file_idx=file_idx)
     # Load mask
     brain_mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
     masker_wb = NiftiMasker(mask_img=brain_mask, standardize=True)
@@ -38,9 +37,15 @@ def load_data(sub_id, task):
     dimensions = masked_nii.header.get_zooms() 
     
     M = brain_mask.get_fdata()
-    
+
     return bold_data, M, affine_mat, dimensions
 
+def remove_missing(X):
+    threshold = X.shape[0] // 20 # 5% are 0
+    n_missing = np.sum(X==0, axis=0)
+    mask = n_missing <= threshold
+    filtered_X = X[:,mask]
+    return filtered_X
 
 def IDE_kernel(data, sl_mask, myrad, bcvar):
     data=data[0]
@@ -53,6 +58,7 @@ def IDE_kernel(data, sl_mask, myrad, bcvar):
     
     # check for unique input values 
     if np.linalg.norm(data_arr) == 0: return np.nan, np.nan
+    data_arr = remove_missing(data_arr)
     
     R = []
     for meth_name in METHODS_HERE:
@@ -76,6 +82,7 @@ if __name__ == '__main__':
     parser.add_argument('-d','--dataset',type=str)
     parser.add_argument('-t','--task', type=str)
     parser.add_argument('-i', '--subject_idx', type=int)
+    parser.add_argument('-f','--file_idx',type=int, default=0)
     parser.add_argument('-r','--sl_rad', type=int, default=5)
     parser.add_argument('-s','--subject_filter', type=str, default='0')
     parser.add_argument('-v','--verbose', type=int, default=1)
@@ -101,10 +108,8 @@ if __name__ == '__main__':
         sys.exit(1)
     if p.verbose and rank == 0: print(f'loaded {p.dataset}_utils')
     
-    # THIS WAS CHANGED
-    METHODS_HERE = ['TPHATE_DiffOp_IDE', 'MiND_ML', 'lPCA','PCA']#,'FisherS','KNN']
-    METHODS_OUTPUT_LABELS = ["TPH_diffop_eigdecomp", "TPH_OPTT"]+METHODS_HERE[1:]
-    
+    METHODS_HERE = ['TPHATE_DiffOp_IDE', 'MiND_ML', 'lPCA','PCA'] 
+    METHODS_OUTPUT_LABELS = METHODS_HERE    
     KNN=config.KNN
     THRESHOLD=config.THRESHOLD
 
@@ -119,7 +124,7 @@ if __name__ == '__main__':
     plot_outdir = os.path.join(utils.get_scratch_dir().replace('results', 'plots'), 'IDE', 'LOSO')
     os.makedirs(results_outdir, exist_ok=True)
     os.makedirs(plot_outdir, exist_ok=True)
-    output_name = os.path.join(results_outdir, f'{this_subject}_{p.task}_') 
+    output_name = os.path.join(results_outdir, f'{this_subject}_{p.task}_file_idx_{p.file_idx}') 
     if not p.overwrite:
         fns = glob.glob(output_name+'*')
         if len(fns) != 0:
@@ -129,7 +134,7 @@ if __name__ == '__main__':
 
     data,masks,affines,dimsizes,bcvar = [],[],[],[],[]
     if rank == 0:
-        data_i, wb_mask, affine_mat, dimsize = load_data(this_subject, p.task)
+        data_i, wb_mask, affine_mat, dimsize = load_data(this_subject, p.task, p.file_idx)
         data.append(data_i)
         masks.append(wb_mask)
         affines.append(affine_mat)

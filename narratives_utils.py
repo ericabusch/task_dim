@@ -65,13 +65,17 @@ def get_out_dir():
     return d
 
 def get_scratch_dir():
-    d = f'{SCRATCH_DIR}/Narratives/'
+    d = f'{SCRATCH_DIR}/narratives/'
     if not exists(d): 
         os.makedirs(d, exist_ok=True)
         os.makedirs(d+'IDE/LOSO/results', exist_ok=True)
         os.makedirs(d+'IDE/LOSO/plots', exist_ok=True)
         os.makedirs(d+'ISC/LOSO/results', exist_ok=True)
         os.makedirs(d+'ISC/LOSO/plots', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO_parcel/results', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO_parcel/plots', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO_parcel/results', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO_parcel/plots', exist_ok=True)
     return d
 
 def get_results_dir():
@@ -83,14 +87,14 @@ def get_task_filenames(subject_list, task):
     data_dir = NARRATIVES_DATA_DIRS[task.upper()]
     filenames = []
     for s in subject_list:
-        f = glob.glob(NARRATIVES_DATA_DIRS[task.upper()]+f'/{s}*.nii.gz')[0]
+        f = sorted(glob.glob(NARRATIVES_DATA_DIRS[task.upper()]+f'/{s}*.nii.gz'))[0]
         filenames.append(f)
     return filenames
     
-def get_subject_data(sub_id, task,trim=False):
+def get_subject_data(sub_id, task,trim=False,file_idx=0):
     if 'sub' not in sub_id:
         sub_id = f'sub-{sub_id}'
-    fn = glob.glob(NARRATIVES_DATA_DIRS[task.upper()]+f'/{sub_id}*.nii.gz')[0]
+    fn = glob.glob(NARRATIVES_DATA_DIRS[task.upper()]+f'/{sub_id}*.nii.gz')[file_idx]
     nii = nib.load(fn)
     return nii
 

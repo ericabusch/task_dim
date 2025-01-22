@@ -27,6 +27,9 @@ def load_data(sub_id, task):
     
     # Load bold data and some header information so that we can save searchlight results as nifti later.
     nii = utils.get_subject_data(sub_id, task, trim=True)
+    # if nii is a list, only tae the first one for ISC
+    if type(nii) == list:
+        nii = nii[0]
     # Load mask
     brain_mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
     masker_wb = NiftiMasker(mask_img=brain_mask, standardize=True)

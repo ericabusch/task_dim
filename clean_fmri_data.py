@@ -9,6 +9,7 @@ from nibabel.nifti1 import Nifti1Image
 from nibabel.processing import fwhm2sigma
 from scipy.ndimage import gaussian_filter1d
 from nibabel.processing import smooth_image
+from nilearn.datasets import load_mni152_template
 
 # things to regress: 
 regressors = ['trans_x', 'rot_x', 'trans_y', 'rot_y', 'trans_z','rot_z','csf','global_signal','white_matter']
@@ -16,7 +17,7 @@ regressors = ['trans_x', 'rot_x', 'trans_y', 'rot_y', 'trans_z','rot_z','csf','g
 # takes a volume image, a comfounds timeseries for this run, and a file to save to
 # can optionally filter the data (HP filter), run linear detrending,
 # and mask a timeseries. Timing mask is expected to be [from_start, from_end]
-def denoise_volume(volume_image, mask_image, confounds_df, outfn, high_pass_filter=None, detrend=True, timing_mask=None, smooth_fwhm=0):
+def denoise_volume(volume_image, mask_image, confounds_df, outfn, high_pass_filter=None, resolution=0, detrend=True, timing_mask=None, smooth_fwhm=0):
     timepoints = np.arange(volume_image.shape[-1])
     confounds = confounds_df[regressors]
     
@@ -40,8 +41,12 @@ def denoise_volume(volume_image, mask_image, confounds_df, outfn, high_pass_filt
                                         standardize=False,
                                         high_pass=high_pass_filter,
                                         mask_img=mask_image)
+    if resolution != 0:
+        template = load_mni152_template(resolution=resolution)
+        clean = nilearn.image.resample_to_img(clean, template, force_resample=True, interpolation="nearest")
+
     nib.save(clean, outfn)
-    print('saved cleaned data to ', outfn)
+    print(f'saved cleaned data to {outfn}, shape={clean.shape}', outfn)
     return clean
 
 if __name__ == '__main__':
@@ -64,15 +69,16 @@ if __name__ == '__main__':
     vol_fns, conf_fns, outfns, wb_mask_fns = utils.get_subject_data_fmriprep_output(p.subject_id, p.task)
     print(f'running {p.subject_id}, {p.task}')
     TR = utils.get_tr()
+    resolution=3
     high_pass_filter = 1/100
-    smooth_sigma=0
+    smooth_fwhm=5
     for nii_file, confound_file, out_file, brain_mask in zip(vol_fns, conf_fns, outfns,wb_mask_fns):
         print(confound_file)
         confound_df = pd.read_csv(confound_file, sep='\t')[regressors]
         vol_img = nib.load(nii_file)
         mask_img = nib.load(brain_mask)
         print(f'Input shape: {vol_img.shape}, mask:{mask_img.shape}, will save to {out_file}')
-        _=denoise_volume(vol_img, mask_img, confound_df, out_file, high_pass_filter=high_pass_filter, detrend=True, timing_mask=None, smooth_fwhm=0)
+        _=denoise_volume(vol_img, mask_img, confound_df, out_file, high_pass_filter=high_pass_filter, resolution=resolution, detrend=True, timing_mask=None, smooth_fwhm=smooth_fwhm)
 
 
 

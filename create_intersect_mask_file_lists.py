@@ -30,20 +30,18 @@ if __name__ == '__main__':
 	if p.dataset.lower() == 'narratives': import narratives_utils as utils
 	elif p.dataset.lower() == 'rest_movie': import RM_utils as utils
 	elif p.dataset.lower() == 'camcan': import camcan_utils as utils
-	elif p.dataset.lower() == 'infant_rest_movie': import RM_infant_utils as utils
+	elif p.dataset.lower() == 'infantrestmovie': import RM_infant_utils as utils
 	elif p.dataset.lower() == 'cneuromod': import CNM_utils as utils
-	
 	else: print(f'{p.dataset} not valid');  sys.exit(1)
 	if VERBOSE: print(f'loaded {p.dataset}_utils')
 	
-	if p.dataset.lower() != 'infant_rest_movie':
+	if p.dataset.lower() != 'infantrestmovie':
 		all_subjects = utils.get_intersecting_subjects(subject_filter=0)
 		all_filenames = get_filenames(p.dataset, all_subjects)
-		out_filename = f'{utils.get_out_dir()}/files_for_intersect_mask.txt'
+		out_filename = f'{utils.get_out_dir()}/files_for_3mm_intersect_mask.txt'
 		if VERBOSE: print(f'writing {len(all_filenames)} names to {out_filename}')
 		write_filelist(out_filename, all_filenames)
 	else:
-		print('here')
 		tasks = utils.get_tasks()
 		for t in tasks:
 			subject_list = INFANT_SUBJECTS_TASKS[t]

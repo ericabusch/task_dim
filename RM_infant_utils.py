@@ -1,6 +1,6 @@
 import json, glob
 from os.path import join, exists
-import os
+import os,sys
 import nibabel as nib
 from config import *
 import pandas as pd
@@ -42,8 +42,17 @@ def get_out_dir():
     return d
 
 def get_scratch_dir():
-    d = f'{SCRATCH_DIR}/InfantRestMovie/'
-    if not exists(d): os.makedirs(d, exist_ok=True)
+    d = f'{SCRATCH_DIR}/infant_rest_movie/'
+    if not exists(d): 
+        os.makedirs(d, exist_ok=True)
+        os.makedirs(d+'IDE/LOSO/results', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO/plots', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO/results', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO/plots', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO_parcel/results', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO_parcel/plots', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO_parcel/results', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO_parcel/plots', exist_ok=True)
     return d
 
 def get_task_filenames(subject_list, task):
@@ -54,17 +63,26 @@ def get_task_filenames(subject_list, task):
     data_dir = RM_INFANT_DATA_DIRS[task.lower()]
     filenames = []
     for s in subject_list:
-        f = glob.glob(RM_INFANT_DATA_DIRS[task.lower()]+f'/{s}*{RM_INFANT_STRING_MATCH[task]}*')
+        f = sorted(glob.glob(RM_INFANT_DATA_DIRS[task.lower()]+f'/{s}*{RM_INFANT_STRING_MATCH[task]}*'))
         if len(f) == 0:
             print(RM_INFANT_DATA_DIRS[task.lower()]+f'/{s}*{RM_INFANT_STRING_MATCH[task]}*')
             continue
         filenames += f
     return filenames
     
-def get_subject_data(sub_id, task, trim=False):
-    #print(RM_INFANT_DATA_DIRS[task.lower()]+f'/{sub_id}*{RM_INFANT_STRING_MATCH[task]}*')
-    fn = glob.glob(RM_INFANT_DATA_DIRS[task.lower()]+f'/{sub_id}*{RM_INFANT_STRING_MATCH[task]}*')[0]
-    nii = nib.load(fn)
+def get_subject_data(sub_id, task, trim=False, file_idx=0):
+    '''
+    returns a list of niftis
+    '''
+    fn = sorted(glob.glob(RM_INFANT_DATA_DIRS[task.lower()]+f'/{sub_id}*{RM_INFANT_STRING_MATCH[task]}*'))
+    try:
+        fn=fn[file_idx]
+    except:
+        print(f'tried to find idx={file_idx} for {sub_id},{task}, but fns of len:{len(fn)}')
+        sys.exit(1)
+    nii =  nib.load(fn)
+    if task == 'sleep':
+        trim = False
     if trim:
         nii = index_img(nii, np.arange(RM_INFANT_TIMEPOINTS[task.lower()]))
     return nii

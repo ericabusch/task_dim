@@ -30,9 +30,10 @@ def other_eig_diffop(P, threshold=0.9, knn=5, eps=1e-3):
 def compute_tphate_ide(X,threshold=0.9,knn=5):
     tph=tphate.TPHATE(verbose=0,knn=knn)
     y=tph.fit_transform(X)
-    tph_eig_i = diffop_eig_ide(tph.diff_op,threshold)
-    other_eig_i = other_eig_diffop(tph.diff_op,threshold)
-    return tph_eig_i, tph.optimal_t, other_eig_i
+    if tph.dropoff==1:
+        return tph.optimal_t
+    else:
+        return diffop_eig_ide(tph.diff_op,threshold)
 
 def compute_PCA_dim(X, threshold=0.9, knn=5):
     pca = PCA()

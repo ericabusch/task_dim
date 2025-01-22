@@ -44,8 +44,17 @@ def get_out_dir():
     return d
 
 def get_scratch_dir():
-    d = f'{SCRATCH_DIR}/RestMovie/'
-    if not exists(d): os.makedirs(d, exist_ok=True)
+    d = f'{SCRATCH_DIR}/rest_movie/'
+    if not exists(d): 
+        os.makedirs(d, exist_ok=True)
+        os.makedirs(d+'IDE/LOSO/results', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO/plots', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO/results', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO/plots', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO_parcel/results', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO_parcel/plots', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO_parcel/results', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO_parcel/plots', exist_ok=True)
     return d
 
 def get_task_filenames(subject_list, task):
@@ -56,20 +65,19 @@ def get_task_filenames(subject_list, task):
     data_dir = RM_DATA_DIRS[task.upper()]
     filenames = []
     for s in subject_list:
-        f = glob.glob(RM_DATA_DIRS[task.upper()]+f'/{s}*{RM_STRING_MATCH}')
+        f = sorted(glob.glob(RM_DATA_DIRS[task.upper()]+f'/{s}*{RM_STRING_MATCH}'))
         if len(f) == 0:
             print(RM_DATA_DIRS[task.upper()]+f'/{s}*{RM_STRING_MATCH}')
             continue
         filenames += f
     return filenames
     
-def get_subject_data(sub_id, task, trim=True):
+def get_subject_data(sub_id, task, trim=True, file_idx=0):
     if 'rest_movie' not in sub_id:
         sub_id = f'rest_movie_{sub_id:02d}'
-    fn = glob.glob(RM_DATA_DIRS[task.upper()]+f'/{sub_id}*{RM_STRING_MATCH}')[0]
+    fn = glob.glob(RM_DATA_DIRS[task.upper()]+f'/{sub_id}*{RM_STRING_MATCH}')[file_idx]
     nii = nib.load(fn)
-    if trim:
-        nii = index_img(nii, np.arange(RM_TIMEPOINTS[task.upper()]))
+    if trim: nii = index_img(nii, np.arange(RM_TIMEPOINTS[task.upper()]))
     return nii
 
 def get_basedir():

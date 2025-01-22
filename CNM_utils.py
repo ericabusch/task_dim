@@ -31,8 +31,17 @@ def get_out_dir():
     return d
 
 def get_scratch_dir():
-    d = f'{SCRATCH_DIR}/CNeuromod/'
-    if not exists(d): os.makedirs(d, exist_ok=True)
+    d = f'{SCRATCH_DIR}/cneuromod/'
+    if not exists(d): 
+        os.makedirs(d, exist_ok=True)
+        os.makedirs(d+'IDE/LOSO/results', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO/plots', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO/results', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO/plots', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO_parcel/results', exist_ok=True)
+        os.makedirs(d+'IDE/LOSO_parcel/plots', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO_parcel/results', exist_ok=True)
+        os.makedirs(d+'ISC/LOSO_parcel/plots', exist_ok=True)
     return d
 
 def get_task_filenames(subject_list, task):
@@ -42,16 +51,22 @@ def get_task_filenames(subject_list, task):
     data_dir = CNM_DATA_DIRS[task.lower()]
     filenames = []
     for s in subject_list:
-        f = glob.glob(f'{data_dir}/{s}*')
+        f = sorted(glob.glob(f'{data_dir}/{s}*'))
         if len(f) == 0:
             print(f'{data_dir}/{s}*')
             continue
         filenames += f
     return filenames
     
-def get_subject_data(sub_id, task, trim=False,res=''):
-    fn = glob.glob(f'{CNM_DATA_DIRS[task]}/{sub_id}*')[0]
-    nii = nib.load(fn)
+def get_subject_data(sub_id, task, trim=False,file_idx=0):
+    fn = sorted(glob.glob(f'{CNM_DATA_DIRS[task]}/{sub_id}*'))
+    try:
+        fn=fn[file_idx]
+    except:
+        print(f'tried to find idx={file_idx} for {sub_id},{task}, but fns of len:{len(fn)}')
+        sys.exit(1)
+
+    nii = nib.load(fn) 
     return nii
 
 
@@ -70,8 +85,8 @@ def get_subject_data_fmriprep_output(sub_id, task):
             base = f.split('/')[-1]
             new_base = base.replace('.nii.gz','3mm_masked.nii.gz')
             base_dir = get_basedir()
-            os.makedirs(f'{base_dir}/{task}/', exist_ok=True)
-            new_fns.append(f'{base_dir}/{task}_3mm/{new_base}')
+            os.makedirs(f'{base_dir}/{task}_3mm_cleaned/', exist_ok=True)
+            new_fns.append(f'{base_dir}/{task}_3mm_cleaned/{new_base}')
         fns = glob.glob(f'{CNM_DATALAD_DIR}/{task_type}/{sub_id}/{ses}/func/*{task}*confound*.tsv')
         conf_fns += fns
 

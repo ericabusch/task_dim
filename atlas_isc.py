@@ -26,12 +26,15 @@ def load_atlas(atlas_name='Schaefer'):
 def run_subject_ide(test_subject, train_subjects, task, atlas_name='Schaefer'): 
     atlas_image, atlas_df = load_atlas(atlas_name)
     nii = utils.get_subject_data(test_subject, task, trim=True)
-    print(f"Original shape: {nii.shape}")
+    if type(nii) == list:
+        nii = nii[0]
+    if VERBOSE: print(f"Original shape: {nii.shape}")
     # apply whole-brain mask, then invert
     wb_mask = utils.get_intersect_mask()
     masker_wb = NiftiMasker(mask_img=wb_mask, standardize=True)
     masked_nii = masker_wb.fit_transform(nii)
     test_nii = masker_wb.inverse_transform(masked_nii)
+    if VERBOSE: print(f"New shape: {test_nii.shape}")
 
     train_niis = []
     for i, train_sub in enumerate(train_subjects):
@@ -52,7 +55,6 @@ def run_subject_ide(test_subject, train_subjects, task, atlas_name='Schaefer'):
         train_roi_data = [np.nan_to_num(masker.fit_transform(n).ravel()) for n in train_niis]
         train_roi_data = np.nanmean(np.array(train_roi_data),axis=0)
         r = np.corrcoef(test_roi_data, train_roi_data)[0,1]
-        print(test_roi_data.shape, train_roi_data.shape)
         expanded = np.repeat(r, n_voxels).reshape(1,-1).astype("double")
         tokens = atlas_df.iloc[roi_id]['labels']
         roi_str = tokens.decode("UTF-8")
@@ -115,7 +117,7 @@ if __name__ == '__main__':
     if VERBOSE: print(f'saved {outfn_base}_ISC.nii.gz')
     if p.plot:
        title = f'{p.dataset} {p.task} {test_subject} ISC'
-       f = outfn_base.replace(results_outdir, plot_outdir)+f'{method}_statmap.png'
+       f = outfn_base.replace(results_outdir, plot_outdir)+f'statmap.png'
        plotting.plot_stat_map(volume, output_file=f, colorbar=True, threshold=0.001, cmap=cmap, title=title)
        print(f'plotted at {f}')
 
