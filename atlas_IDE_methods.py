@@ -6,7 +6,6 @@ import seaborn as sns
 import os, sys, glob
 import nilearn 
 import nibabel as nib
-from config import *
 import ide_helpers as ide
 from scipy import stats
 from nilearn import plotting
@@ -49,21 +48,21 @@ def run_subject_ide(sub_id, task, file_idx=0, atlas_name='Schaefer'):
         roi_data = np.nan_to_num(masker.fit_transform(nii))
         tokens = atlas_df.iloc[roi_id]['labels']
         roi_str = tokens.decode("UTF-8")
-        if VERBOSE: print(f'before masking, roi_data={np.shape(roi_data)}')
+        #if VERBOSE: print(f'before masking, roi_data={np.shape(roi_data)}')
         if np.linalg.norm(roi_data) == 0: 
             R = np.empty(len(METHODS_TO_RUN))
             R[:] = np.nan
             if VERBOSE: print(f'no unique input values')
         else:
             roi_data = remove_missing(roi_data)
-            if VERBOSE: print(f'after masking, {roi_str} ={np.shape(roi_data)}')
+            #if VERBOSE: print(f'after masking, {roi_str} = {np.shape(roi_data)}')
             R = []
             for meth_name in METHODS_TO_RUN:
                 func = ide.METHODS[meth_name]
-                try:
-                    res = func(roi_data, THRESHOLD, KNN)
-                except:
-                    res = np.nan 
+                # try:
+                res = func(roi_data, THRESHOLD, KNN)
+                # except:
+                    # res = np.nan 
                 if type(res) == tuple:
                     for r in res:
                         R.append(r)
@@ -99,18 +98,27 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--plot', type=int, default=1)
     p = parser.parse_args()
 
-    METHODS_TO_RUN = ['TPHATE_DiffOp_IDE', 'MiND_ML', 'lPCA','PCA','FisherS']
-    METHODS_OUTPUT_LABELS = METHODS_TO_RUN  
-    # import the right utils file
-    if p.dataset.lower() == 'narratives': import narratives_utils as utils
-    elif p.dataset.lower() == 'rest_movie': import RM_utils as utils
-    elif p.dataset.lower() == 'camcan': import camcan_utils as utils
-    elif p.dataset.lower() == 'infant_rest_movie': import RM_infant_utils as utils
-    elif p.dataset.lower() == 'cneuromod': import CNM_utils as utils
-    else: print(f'{p.dataset} not valid');  sys.exit(1)
+    # import the right utils/config file
+    if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
+    elif p.dataset.lower() == 'adult_restmovie': import adult_restmovie_utils as utils; import adult_restmovie_config as config
+    elif p.dataset.lower() == 'camcan': import camcan_utils as utils; import camcan_config as config
+    elif p.dataset.lower() == 'infant_restmovie': import infant_restmovie_utils as utils; import infant_restmovie_config as config; p.subject_filter=p.task
+    elif p.dataset.lower() == 'cneuromod': import cneuromod_utils as utils; import cneuromod_config as config
+    elif p.dataset.lower() == 'partlycloudy': import partlycloudy_utils as utils; import partlycloudy_config as config
+    elif p.dataset.lower() == 'hbn': import hbn_utils as utils; import hbn_config as config
+    else: print(f'{p.dataset} not valid'); sys.exit(1)
+    
     if p.verbose: print(f'loaded {p.dataset}_utils')
+    VERBOSE=config.VERBOSE
+    KNN=config.KNN
+    THRESHOLD=config.THRESHOLD
+
+    METHODS_TO_RUN = config.IDE_METHODS
+    METHODS_OUTPUT_LABELS = METHODS_TO_RUN  
+
      # load target subject
     ALL_SUBJECTS = utils.get_intersecting_subjects(subject_filter=p.subject_filter)
+    
     # make sure the desired subject exists
     if len(ALL_SUBJECTS) < p.subject_idx:
         print(f'test subject idx {p.subject_idx} not in list of len {len(ALL_SUBJECTS)}')
@@ -121,9 +129,12 @@ if __name__ == '__main__':
     os.makedirs(results_outdir,exist_ok=True)
     os.makedirs(plot_outdir,exist_ok=True)
 
-    outfn_base = f'{results_outdir}/{this_subject}_{p.task}_{p.atlas}_file_idx_{p.file_idx}'
+    outfn_base = os.path.join(results_outdir, f'{this_subject}_{p.task}_{p.atlas}')
+    if p.dataset.lower() in ['cneuromod','infant_restmovie']:
+        outfn_base+=f'_file_idx_{p.file_idx}'
+
     if p.verbose: print(f'Will save to {outfn_base}')
-    results_df, results_volumes = run_subject_ide(this_subject, p.task, atlas_name=p.atlas)
+    results_df, results_volumes = run_subject_ide(this_subject, p.task, p.file_idx, atlas_name=p.atlas)
     results_df.to_csv(outfn_base+'_all_IDE_results.csv')
     cmap=utils.get_brain_cmap()
     for method, volume in results_volumes.items():

@@ -4,7 +4,6 @@ import os, sys, glob,argparse
 import nibabel as nib
 import nilearn
 from scipy.stats import zscore
-from config import *
 from nibabel.nifti1 import Nifti1Image
 from nibabel.processing import fwhm2sigma
 from scipy.ndimage import gaussian_filter1d
@@ -59,11 +58,11 @@ if __name__ == '__main__':
     p = parser.parse_args()
 
     # import the right utils file
-    if p.dataset.lower() == 'narratives': import narratives_utils as utils
-    elif p.dataset.lower() == 'rest_movie': import RM_utils as utils
-    elif p.dataset.lower() == 'camcan': import camcan_utils as utils
-    elif p.dataset.lower() == 'infant_rest_movie': import RM_infant_utils as utils
-    elif p.dataset.lower() == 'cneuromod': import CNM_utils as utils
+    if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
+    elif p.dataset.lower() == 'rest_movie': import adult_restmovie_utils as utils; import adult_restmovie_config as config
+    elif p.dataset.lower() == 'camcan': import camcan_utils as utils; import camcan_config as config
+    elif p.dataset.lower() == 'infant_rest_movie': import infant_restmovie_utils as utils; import infant_restmovie_config as config
+    elif p.dataset.lower() == 'cneuromod': import cneuromod_utils as utils; import cneuromod_config as config
     else: print(f'{p.dataset} not valid');  sys.exit(1)
 
     vol_fns, conf_fns, outfns, wb_mask_fns = utils.get_subject_data_fmriprep_output(p.subject_id, p.task)
@@ -72,7 +71,10 @@ if __name__ == '__main__':
     resolution=3
     high_pass_filter = 1/100
     smooth_fwhm=5
-    for nii_file, confound_file, out_file, brain_mask in zip(vol_fns, conf_fns, outfns,wb_mask_fns):
+    print(vol_fns)
+    print(conf_fns)
+    print(out_fns)
+    for nii_file, confound_file, out_file, brain_mask in zip(vol_fns, conf_fns, outfns, wb_mask_fns):
         print(confound_file)
         confound_df = pd.read_csv(confound_file, sep='\t')[regressors]
         vol_img = nib.load(nii_file)

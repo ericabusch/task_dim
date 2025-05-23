@@ -2,7 +2,7 @@ import json, glob
 from os.path import join, exists
 import os
 import nibabel as nib
-from config import *
+from camcan_config import *
 import pandas as pd
 import seaborn as sns
 import matplotlib

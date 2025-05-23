@@ -24,7 +24,6 @@ warnings.filterwarnings("ignore")
 from mpi4py import MPI
 
 def load_data(sub_id, task):
-    
     # Load bold data and some header information so that we can save searchlight results as nifti later.
     nii = utils.get_subject_data(sub_id, task, trim=True)
     # if nii is a list, only tae the first one for ISC
@@ -62,7 +61,7 @@ if __name__ == '__main__':
     parser.add_argument('-r','--sl_rad', type=int, default=5)
     parser.add_argument('-s','--subject_filter', type=str, default="0")
     parser.add_argument('-v','--verbose', type=int, default=1)
-    parser.add_argument('-o', '--overwrite', type=int, default=1)
+    parser.add_argument('-o', '--overwrite', type=int, default=0)
     parser.add_argument('-p', '--plot', type=int, default=0)
     p = parser.parse_args()
 
@@ -75,22 +74,28 @@ if __name__ == '__main__':
     percent_active=.10
 
     # import the right utils file
-    if p.dataset.lower() == 'narratives': import narratives_utils as utils
-    elif p.dataset.lower() == 'rest_movie': import RM_utils as utils
-    elif p.dataset.lower() == 'camcan': import camcan_utils as utils
-    elif p.dataset.lower() == 'infant_rest_movie': import RM_infant_utils as utils
-    elif p.dataset.lower() == 'cneuromod': import CNM_utils as utils
-    else: print(f'{p.dataset} not valid');  sys.exit(1)
-    if p.verbose and rank == 0: print(f'loaded {p.dataset}_utils')
+    if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
+    elif p.dataset.lower() == 'adult_restmovie': import adult_restmovie_utils as utils; import adult_restmovie_config as config
+    elif p.dataset.lower() == 'camcan': import camcan_utils as utils; import camcan_config as config
+    elif p.dataset.lower() == 'infant_restmovie': import infant_restmovie_utils as utils; import infant_restmovie_config as config; p.subject_filter=p.task
+    elif p.dataset.lower() == 'cneuromod': import cneurmod_utils as utils; import cneuromod_config as config
+    elif p.dataset.lower() == 'partlycloudy': import partlycloudy_utils as utils; import partlycloudy_config as config
+    elif p.dataset.lower() == 'hbn': import hbn_utils as utils; import hbn_config as config
+    else: print(f'{p.dataset} not valid'); sys.exit(1)
+    if p.verbose: print(f'loaded {p.dataset}_utils')
+    VERBOSE=config.VERBOSE
 
     # load subjects
     ALL_SUBJECTS = utils.get_intersecting_subjects(subject_filter=p.subject_filter)
+    if p.verbose: print(f'Filter={p.subject_filter}, test idx:{p.held_out_idx}, n_overall={len(ALL_SUBJECTS)}')
+    
     # make sure the desired subject exists
     if len(ALL_SUBJECTS) < p.held_out_idx:
         print(f'test subject idx {p.held_out_idx} not in list of len {len(ALL_SUBJECTS)}')
         sys.exit(2)
     test_subject = ALL_SUBJECTS[p.held_out_idx]
     train_subjects = [s for s in np.setdiff1d(ALL_SUBJECTS, test_subject)]
+    if p.verbose: print(f'Test sub:{test_subject}, n_train_sub={len(train_subjects)}')
     outdir = os.path.join(utils.get_scratch_dir(), 'ISC', 'LOSO', 'results')
     plot_outdir = os.path.join(utils.get_scratch_dir().replace('results', 'plots'), 'ISC', 'LOSO')
     os.makedirs(outdir, exist_ok=True)

@@ -49,14 +49,37 @@ AERO_INFANT_RM_SUBSET= ["s0057_1", "s0607_1", "s1607_1", "s2037_1", "s2057_1", "
 MICKEY_INFANT_RM_SUBSET=["s0307_2","s2307_1","s6687_1","s8187_1","s8687_1"]
 
 # This is the full dataset -- dont use!
-MICKEY_INFANT_SUBJECTS = ['s0307_1','s0307_2','s0687_1','s1187_1','s2307_1','s2687_1','s5187_1','s5687_1','s6607_1','s6687_1','s8187_1','s8607_1','s8687_1']
+MICKEY_INFANT_SUBJECTS = ['s0307_1','s0307_2','s0687_1','s1187_1','s2307_1','s2687_1',
+'s5187_1','s5687_1','s6607_1','s6687_1','s8187_1','s8607_1','s8687_1']
 AERO_INFANT_SUBJECTS = ['s0057_1','s0607_1','s0687_1','s1607_1','s2037_1','s2047_1','s2057_1','s2067_1','s2097_1','s2687_1','s3097_1','s3607_1','s4047_1','s4607_1','s5037_1','s6017_1',
 's6057_1','s6607_1','s6687_1','s6687_1','s7017_1','s7057_1','s7067_1','s8037_1','s8077_1','s8687_1','s8687_2','s9057_1']
- 
+INFANT_PARTICIPANT_DATA = {'sleep':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Sleep/infant_sleep_participants.csv',
+ 'aeronaut':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Aeronaut/infant_aeronaut_participants.csv',
+ 'mickey':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Mickey/infant_mickey_participants.csv'
+ }
 
-INFANT_SUBJECTS_TASKS = {"sleep": SLEEP_INFANT_SUBJECTS, 
-						 "aeronaut":AERO_INFANT_RM_SUBSET, 
-						 "mickey":MICKEY_INFANT_RM_SUBSET} # all mickey infants saw it twice in a row (148 trs) so just include 74
+SLEEP_INFANT_SUBJECTS_2 = ['s0307_1_1', 's2307_1_1', 's8187_1_4', 's4107_1_1', 's8687_2_2',
+       's2057_1_2', 's6057_1_4', 's6057_1_7', 's2067_1_2', 's2097_1_4',
+       's3097_1_4', 's3097_1_4', 's5927_1_1', 's9986_1_1', 's9986_1_4',
+       's9986_1_5', 's2986_1_1', 's2986_1_2', 's7286_2_2', 's7286_2_3']
+
+# the ones that were only included in the RM dataset -- use these subjects, with repeats
+AERO_INFANT_RM_SUBSET_2 = ['s8687_1_3', 's8687_1_4', 's8687_1_5', 's8687_1_7', 's8687_2_1',
+       's6687_1_3', 's6687_1_4', 's6687_1_5', 's6687_1_6', 's4607_1_5',
+       's6607_1_2', 's0607_1_2', 's1607_1_4', 's3607_1_2', 's2057_1_2',
+       's6057_1_1', 's6057_1_2', 's0057_1_3', 's7017_1_1', 's7017_1_2',
+       's8037_1_2', 's2037_1_2', 's5037_1_1', 's7067_1_3', 's4047_1_1',
+       's3097_1_1']
+MICKEY_INFANT_RM_SUBSET_2 =['s0307_2_1', 's0307_2_1', 's8187_1_8', 's2307_1_2', 's2307_1_2',
+       's6687_1_1', 's8687_1_2', 's0687_1_2']
+
+RM_INFANT_OVERLAPPING_SUBJECTS = {'mickey_sleep': ['s8187_1','s2307_1'], 
+'aeronaut_sleep':['s8687_2','s2057_1','s6057_1','s3097_1'], 
+'aeronaut_mickey':['s6687_1','s8687_1']}
+
+INFANT_SUBJECTS_TASKS = {"sleep": SLEEP_INFANT_SUBJECTS_2, 
+						 "aeronaut":AERO_INFANT_RM_SUBSET_2, 
+						 "mickey":MICKEY_INFANT_RM_SUBSET_2} # all mickey infants saw it twice in a row (148 trs) so just include 74
 
 SLEEP_INFANT_INTERSECT_MASK = f'{RM_INFANT_OUTDIR}/masks/InfantRestMovie_intersect_mask_sleep.nii.gz'
 AERONAUT_INFANT_INTERSECT_MASK = f'{RM_INFANT_OUTDIR}/masks/InfantRestMovie_intersect_mask_aeronaut.nii.gz'
@@ -112,8 +135,19 @@ CNM_MULTIPLE_FILES = {"motor": {s:3 for s in CNM_SUBJECTS},
 "emotion":{'sub-01':2, 'sub-03':3, 'sub-05':3},
 "language":{'sub-01':2, 'sub-03':3, 'sub-05':3},
 "relational":{'sub-01':2, 'sub-03':3, 'sub-05':3}}
-  
 
+########################################
+BASE_DIR_PARTLY_CLOUDY = '/gpfs/milgram/project/turk-browne/projects/partly_recon'
+PC_SUBJECTS = [f'sub-pixar{i:03d}' for i in range(1,156)]
+PC_DATA_DIR = f'{BASE_DIR_PARTLY_CLOUDY}/data/resampled_participants/motion_reg/'
+PC_INTERSECT_MASK=f'{ROOT}/task_dim/PartlyCloudy/masks/PartlyCloudy_intersect_mask.nii.gz'
+PC_OUTDIR = f'{ROOT}/task_dim/PartlyCloudy/'
+PC_RESULTS_DIR=f'{PC_OUTDIR}/results'
+PC_PARTICIPANT_DF=f'{BASE_DIR_PARTLY_CLOUDY}/participantinfo/participants.csv'
+PC_AGE_GROUPS = ['3yo','4yo','5yo','7yo','8-12yo','Adult','all']
+
+
+#########################################
 ## CONFIG INFO FOR CAMCAN
 BASE_DIR_CAMCAN = '/gpfs/milgram/project/casey/elb77/CamCAN/'
 CAMCAN_PREPROC_MIDSTR='cc700/mri/pipeline/release004/data_fMRI/aamod_norm_write_dartel_00001/'

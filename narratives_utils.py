@@ -84,17 +84,20 @@ def get_results_dir():
     return d
 
 def get_task_filenames(subject_list, task):
-    data_dir = NARRATIVES_DATA_DIRS[task.upper()]
+    data_dir = NARRATIVES_DATA_DIRS[task.lower()]
     filenames = []
     for s in subject_list:
-        f = sorted(glob.glob(NARRATIVES_DATA_DIRS[task.upper()]+f'/{s}*.nii.gz'))[0]
+        f = sorted(glob.glob(NARRATIVES_DATA_DIRS[task.lower()]+f'/{s}*.nii.gz'))[0]
         filenames.append(f)
     return filenames
     
+def has_repeat_files(subject, task):
+    return 0
+
 def get_subject_data(sub_id, task,trim=False,file_idx=0):
     if 'sub' not in sub_id:
         sub_id = f'sub-{sub_id}'
-    fn = glob.glob(NARRATIVES_DATA_DIRS[task.upper()]+f'/{sub_id}*.nii.gz')[file_idx]
+    fn = glob.glob(NARRATIVES_DATA_DIRS[task.lower()]+f'/{sub_id}*.nii.gz')[file_idx]
     nii = nib.load(fn)
     return nii
 
@@ -105,24 +108,29 @@ def get_intersect_mask(subject_filter=0):
     fn = NARRATIVES_INTERSECT_MASK
     return nib.load(fn)
 
-def get_metric_nii_subject(subject, task, metric, filter_by_age=0, slrad=5):
+def get_metric_SL_nii_subject(subject, task, metric, file_idx=0, filter_by_age=0, slrad=5):
+    dirname = get_scratch_dir()
+    task = task.lower()
     if metric == 'ISC':
-        dirname = f'{SCRATCH_DIR}/Narratives/ISC/LOSO/results'
-    else:
-        dirname = f'{SCRATCH_DIR}/Narratives/IDE/LOSO/results'
-    
-    try:
-        task=task.upper()
-        fn = glob.glob(f'{dirname}/{subject}_{task}*{metric}_whole_brain_SL_rad{slrad}.nii.gz')[0]
+        dirname = f'{dirname}/ISC/LOSO/results'
+        filestr = ''
+    else: 
+        dirname = f'{dirname}/IDE/LOSO/results'
+        filestr = f'file_idx_{file_idx}'
+    f = sorted(glob.glob(f'{dirname}/{subject}_{task}*{filestr}*{metric}_whole_brain_SL_rad{slrad}.nii.gz'))[0]
+    return nib.load(f)
 
-    except:
-        try:
-            task=task.lower()
-            fn = glob.glob(f'{dirname}/{subject}_{task}*{metric}_whole_brain_SL_rad{slrad}.nii.gz')[0]
-        except:
-            print(f'nothing found for {subject}, {task}')
-            return
-    return nib.load(fn)
+def get_metric_atlas_nii_subject(subject, task, metric, file_idx=0, filter_by_age=0):
+    dirname = get_scratch_dir()
+    task = task.lower()
+    if metric == 'ISC':
+        dirname = f'{dirname}/ISC/LOSO_parcel/results'
+        filestr = ''
+    else:# metric in METHOD_NAMES:
+        dirname = f'{dirname}/IDE/LOSO_parcel/results'
+        filestr = f'file_idx_{file_idx}'
+    f = sorted(glob.glob(f'{dirname}/{subject}_{task}*{filestr}*{metric}.nii.gz'))[0]
+    return nib.load(f)
 
 def get_tasks():
     return list(NARRATIVES_DATA_DIRS.keys())

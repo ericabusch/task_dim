@@ -1,0 +1,9 @@
+{
+  "bold": {
+    "datatype": "func", 
+    "task": ["movieTP","rest"], 
+    "suffix": "bold",
+    "session":"*"
+}
+
+}

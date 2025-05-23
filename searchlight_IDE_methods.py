@@ -7,7 +7,6 @@ import seaborn as sns
 import os, sys, glob
 import nilearn 
 import nibabel as nib
-import config
 from nilearn import datasets
 from scipy import stats
 from nilearn import plotting
@@ -17,27 +16,22 @@ import tphate, phate
 import ide_helpers as ide
 import warnings
 from nibabel.nifti1 import Nifti1Image
-
 warnings.filterwarnings("ignore")
-
 # Load in MPI
 from mpi4py import MPI
 
 def load_data(sub_id, task, file_idx=0):
     # Load bold data and some header information so that we can save searchlight results as nifti later.
-    nii = utils.get_subject_data(sub_id, task, file_idx=file_idx)
+    nii = utils.get_subject_data(sub_id, task, file_idx=file_idx, trim=False)
     # Load mask
     brain_mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
     masker_wb = NiftiMasker(mask_img=brain_mask, standardize=True)
     masked_normed = masker_wb.fit_transform(nii)
     masked_nii = masker_wb.inverse_transform(masked_normed)
-    
     bold_data = masked_nii.get_fdata()
     affine_mat = masked_nii.affine
     dimensions = masked_nii.header.get_zooms() 
-    
     M = brain_mask.get_fdata()
-
     return bold_data, M, affine_mat, dimensions
 
 def remove_missing(X):
@@ -64,11 +58,9 @@ def IDE_kernel(data, sl_mask, myrad, bcvar):
     for meth_name in METHODS_HERE:
         func = ide.METHODS[meth_name]
         try:
-            res = func(data_arr)
+            res = func(data_arr, THRESHOLD, KNN)
         except:
             res=np.nan
-        # account for the fact that TPHATE_DiffOp_IDE returns 3 things
-        # tph_eigh_i, ph_eigh_i, tph.optimal_t
         if type(res) == tuple:
             for r in res:
                 R.append(r)
@@ -98,17 +90,17 @@ if __name__ == '__main__':
     pool_size = 2
 
     # import the right utils file
-    if p.dataset.lower() == 'narratives': import narratives_utils as utils
-    elif p.dataset.lower() == 'rest_movie': import RM_utils as utils
-    elif p.dataset.lower() == 'camcan': import camcan_utils as utils
-    elif p.dataset.lower() == 'infant_rest_movie': import RM_infant_utils as utils
-    elif p.dataset.lower() == 'cneuromod': import CNM_utils as utils
-    else: 
-        print(f'{p.dataset} not valid')  
-        sys.exit(1)
+    if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
+    elif p.dataset.lower() == 'adult_restmovie': import adult_restmovie_utils as utils; import adult_restmovie_config as config
+    elif p.dataset.lower() == 'camcan': import camcan_utils as utils; import camcan_config as config
+    elif p.dataset.lower() == 'infant_restmovie': import infant_restmovie_utils as utils; import infant_restmovie_config as config; p.subject_filter=p.task
+    elif p.dataset.lower() == 'cneuromod': import cneurmod_utils as utils; import cneuromod_config as config
+    elif p.dataset.lower() == 'partlycloudy': import partlycloudy_utils as utils; import partlycloudy_config as config
+    elif p.dataset.lower() == 'hbn': import hbn_utils as utils; import hbn_config as config
+    else: print(f'{p.dataset} not valid'); sys.exit(1)
     if p.verbose and rank == 0: print(f'loaded {p.dataset}_utils')
     
-    METHODS_HERE = ['TPHATE_DiffOp_IDE', 'MiND_ML', 'lPCA','PCA'] 
+    METHODS_HERE = config.IDE_METHODS
     METHODS_OUTPUT_LABELS = METHODS_HERE    
     KNN=config.KNN
     THRESHOLD=config.THRESHOLD
@@ -124,7 +116,10 @@ if __name__ == '__main__':
     plot_outdir = os.path.join(utils.get_scratch_dir().replace('results', 'plots'), 'IDE', 'LOSO')
     os.makedirs(results_outdir, exist_ok=True)
     os.makedirs(plot_outdir, exist_ok=True)
-    output_name = os.path.join(results_outdir, f'{this_subject}_{p.task}_file_idx_{p.file_idx}') 
+    output_name = os.path.join(results_outdir, f'{this_subject}_{p.task}')
+    if p.dataset.lower() in ['cneuromod','infant_restmovie']:
+        output_name+=f'_file_idx_{p.file_idx}'
+    
     if not p.overwrite:
         fns = glob.glob(output_name+'*')
         if len(fns) != 0:

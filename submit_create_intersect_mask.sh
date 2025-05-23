@@ -16,6 +16,6 @@ COUNT_FN=${THIS_PWD}/${DATASET}/masks/${DATASET}_intersect_count_3mm.nii.gz
 echo "$FILE_LIST_FN"
 echo "$MASK_FN"
 
-module load miniconda; conda activate env_tda;  python -u create_intersect_mask_file_lists.py -d $DATASET
+# module load miniconda; conda activate env_tda;  python -u create_intersect_mask_file_lists.py -d $DATASET
 
 bash create_intersect_mask.sh $FILE_LIST_FN $MASK_FN $COUNT_FN
