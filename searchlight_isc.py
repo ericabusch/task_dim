@@ -13,15 +13,17 @@ from scipy import stats
 from nilearn import plotting
 from nilearn.maskers import NiftiMasker, NiftiLabelsMasker
 from brainiak.searchlight.searchlight import Searchlight
-import tphate
-import scprep
 from nibabel.nifti1 import Nifti1Image
-
+from stats_helper import timeseries_correlation_permutation
 from sklearn.decomposition import PCA
 import warnings
 warnings.filterwarnings("ignore")
 # Load in MPI
 from mpi4py import MPI
+
+correlation_methods = {'pearson': stats.pearsonr,
+                       'spearman': stats.spearmanr,
+                       'kendall': stats.kendalltau}
 
 def load_data(sub_id, task):
     # Load bold data and some header information so that we can save searchlight results as nifti later.
@@ -42,15 +44,34 @@ def load_data(sub_id, task):
     return bold_data, brain_mask.get_fdata(), affine_mat, dimensions
 
 def isc_kernel(data, sl_mask, myrad, bcvar):
+    metric=bcvar[0] if len(bcvar) > 0 else 'pearson'
     num_voxels_in_sl = sl_mask.shape[0] * sl_mask.shape[1] * sl_mask.shape[2]
     test_data = np.nan_to_num(data[0].ravel()) # flatten into  timepointsxvoxels
     train_data = np.nan_to_num(data[1].ravel()) # flatten into timepointsxvoxels
     # check for unique values 
     n1 = np.linalg.norm(train_data)
     n2 = np.linalg.norm(test_data)
-    if n1 == 0 or n2 == 0: r = np.nan 
-    else: r = np.corrcoef(train_data, test_data)[0,1]  # flatten both of these and correlate
+    if n1 == 0 or n2 == 0: 
+        return np.nan
+    test_data = np.nan_to_num(data[0].ravel()) # flatten into  timepointsxvoxels
+    train_data = np.nan_to_num(data[1].ravel()) # flatten into timepointsxvoxels
+    func = correlation_methods[metric]
+    r = func(train_data, test_data)[0]
     return r
+
+
+def isc_stats_kernel(data, sl_mask, myrad, bcvar):
+    num_voxels_in_sl = sl_mask.shape[0] * sl_mask.shape[1] * sl_mask.shape[2]
+    # check for unique values 
+    test_data = data[0] 
+    train_data = data[1]
+    n1 = np.linalg.norm(train_data)
+    n2 = np.linalg.norm(test_data)
+    if n1 == 0 or n2 == 0: 
+        return [np.nan , np.nan]
+    metric = bcvar[0] if len(bcvar) > 0 else 'pearson'
+    stats = timeseries_correlation_permutation(train_data, test_data, method='time_shift', n_permute=1000, metric=metric, tail=2, n_jobs=-1, return_perms=False)
+    return [stats['correlation'], stats['p']]
 
 if __name__ == '__main__':
 
@@ -59,6 +80,7 @@ if __name__ == '__main__':
     parser.add_argument('-t','--task', type=str)
     parser.add_argument('-i', '--held_out_idx', type=int)
     parser.add_argument('-r','--sl_rad', type=int, default=5)
+    parser.add_argument('-c','--run_stats', type=int, default=1)
     parser.add_argument('-s','--subject_filter', type=str, default="0")
     parser.add_argument('-v','--verbose', type=int, default=1)
     parser.add_argument('-o', '--overwrite', type=int, default=0)
@@ -71,7 +93,7 @@ if __name__ == '__main__':
     size = comm.size
     max_blk_edge = 5
     pool_size = 2
-    percent_active=.10
+    percent_active=.8
 
     # import the right utils file
     if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
@@ -84,7 +106,7 @@ if __name__ == '__main__':
     else: print(f'{p.dataset} not valid'); sys.exit(1)
     if p.verbose: print(f'loaded {p.dataset}_utils')
     VERBOSE=config.VERBOSE
-
+    ISC_METRIC='pearson'
     # load subjects
     ALL_SUBJECTS = utils.get_intersecting_subjects(subject_filter=p.subject_filter)
     if p.verbose: print(f'Filter={p.subject_filter}, test idx:{p.held_out_idx}, n_overall={len(ALL_SUBJECTS)}')
@@ -116,7 +138,7 @@ if __name__ == '__main__':
         masks.append(wb_mask)
         affines.append(affine_mat)
         dimsizes.append(dimsize)
-        bcvar.append([])
+        bcvar.append([ISC_METRIC])
     else:
         data_list.append(None)
         wb_mask = utils.get_intersect_mask(subject_filter=p.subject_filter).get_fdata()
@@ -126,7 +148,7 @@ if __name__ == '__main__':
         masks.append(wb_mask)
         affines.append(affine_mat)
         dimsizes.append(dimsize)
-        bcvar.append([])
+        bcvar.append([ISC_METRIC])
         # load in the data for each subject
         for i, train_sub in enumerate(train_subjects):
             d, _, _, _ = load_data(train_sub, p.task)
@@ -143,40 +165,74 @@ if __name__ == '__main__':
     if rank == 0 and p.verbose: print(f'starting searchlight with {np.sum(wb_mask)} voxels')
     sl.distribute(data_list, wb_mask)
     sl.broadcast(bcvar)
-
-    # Run the searchlight analysis
-    if p.verbose: print(f"Begin Searchlight in rank {rank}")
-    sl_result = sl.run_searchlight(isc_kernel, pool_size=pool_size)
-    if p.verbose: print(f"End Searchlight in rank {rank}")
     coords = np.where(wb_mask==1)
-    cmap = 'magma'
 
-    if rank != 0: print(f'exiting rank {rank}'); sys.exit(0)
+    if p.run_stats == 0:
+        # Run the searchlight analysis
+        if p.verbose: print(f"Begin Searchlight ISC Only in rank {rank}")
+        sl_result = sl.run_searchlight(isc_kernel, pool_size=pool_size)
+        if p.verbose: print(f"End Searchlight in rank {rank}")
+        cmap = 'magma'
 
-    # save and plot results on rank 1
-    result_vec = sl_result[wb_mask==1]
-    new_output = output_name.replace('.nii.gz','vectorized.npy')
-    np.save(new_output, result_vec)
-    if p.verbose: print(f'result vec of shape: {result_vec.shape}; saving to {new_output}')
-    result_vol = np.zeros((wb_mask.shape[0], wb_mask.shape[1], wb_mask.shape[2]))
-    aff = affines[0]
-    dimsize = dimsizes[0]
-    result_vol[coords] = result_vec
-    result_vol = np.nan_to_num(result_vol.astype('double'))
-    sl_nii = nib.Nifti1Image(result_vol, aff)
-    # mask non-brain
-    masker_wb_plot = NiftiMasker(mask_img=brain_mask, standardize=False)
-    masked_sl_res = masker_wb_plot.fit_transform(sl_nii)
-    masked_sl_res = masker_wb_plot.inverse_transform(masked_sl_res).get_fdata()[:,:,:,0]
-    sl_nii = nib.Nifti1Image(masked_sl_res, affine_mat)
-    sl_nii.header.set_zooms(dimsize[:3])
-    nib.save(sl_nii, output_name) 
-    
-    if p.plot: 
-        if p.verbose: print(f"Saved result to {output_name}; plotting")
-        title = f'{p.dataset} {p.task} sub {test_subject} ISC sl radius={p.sl_rad}'
-        plotting.plot_stat_map(output_name,output_file=output_name.replace('.nii.gz', '_statmap.png').replace('results','plots'), colorbar=True, cmap=cmap, threshold=0,  title=title)
+        if rank != 0: print(f'exiting rank {rank}'); sys.exit(0)
 
+        # save and plot results on rank 1
+        result_vec = sl_result[wb_mask==1]
+        new_output = output_name.replace('.nii.gz','vectorized.npy')
+        np.save(new_output, result_vec)
+        if p.verbose: print(f'result vec of shape: {result_vec.shape}; saving to {new_output}')
+        result_vol = np.zeros((wb_mask.shape[0], wb_mask.shape[1], wb_mask.shape[2]))
+        aff = affines[0]
+        dimsize = dimsizes[0]
+        result_vol[coords] = result_vec
+        result_vol = np.nan_to_num(result_vol.astype('double'))
+        sl_nii = nib.Nifti1Image(result_vol, aff)
+        # mask non-brain
+        masker_wb_plot = NiftiMasker(mask_img=brain_mask, standardize=False)
+        masked_sl_res = masker_wb_plot.fit_transform(sl_nii)
+        masked_sl_res = masker_wb_plot.inverse_transform(masked_sl_res).get_fdata()[:,:,:,0]
+        sl_nii = nib.Nifti1Image(masked_sl_res, affine_mat)
+        sl_nii.header.set_zooms(dimsize[:3])
+        nib.save(sl_nii, output_name) 
+        
+        if p.plot: 
+            if p.verbose: print(f"Saved result to {output_name}; plotting")
+            title = f'{p.dataset} {p.task} sub {test_subject} ISC sl radius={p.sl_rad}'
+            plotting.plot_stat_map(output_name,output_file=output_name.replace('.nii.gz', '_statmap.png').replace('results','plots'), colorbar=True, cmap=cmap, threshold=0,  title=title)
+    else:
+        # Run the searchlight analysis
+        if p.verbose: print(f"Begin Searchlight ISC with stats in rank {rank}")
+        sl_result = sl.run_searchlight(isc_kernel, pool_size=pool_size)
+        if p.verbose: print(f"End Searchlight in rank {rank}")
+        cmap = 'magma'
+
+        if rank != 0: print(f'exiting rank {rank}'); sys.exit(0)
+
+        result_vec = sl_result[coords]
+        new_output = output_name.replace('.nii.gz','vectorized.npy')
+        np.save(new_output, result_vec)
+        if p.verbose: print(f'result vec of shape: {result_vec.shape}; saving to {new_output}')
+        N = 2
+        result_vec = [N*[0] if not n else n for n in result_vec] # replace all None
+        for i, nm in zip(np.arange(N), ['correlation', 'p']):
+            new_output = output_name.replace('.nii.gz','_{nm}.nii.gz')
+            result_vol = np.zeros_like(wb_mask)
+            res = [r[i] for r in result_vec]
+            result_vol[coords] = res
+            result_vol = result_vol.astype('double')
+            result_vol = np.nan_to_num(result_vol)
+            sl_nii = nib.Nifti1Image(result_vol, affines[0])
+            masker_wb_plot = NiftiMasker(mask_img=brain_mask, standardize=False)
+            masked_sl_res = masker_wb_plot.fit_transform(sl_nii)
+            masked_sl_res = masker_wb_plot.inverse_transform(masked_sl_res).get_fdata()[:,:,:,0]
+            sl_nii = nib.Nifti1Image(masked_sl_res,  affines[0])
+            sl_nii.header.set_zooms(dimsizes[0][:3])
+            nib.save(sl_nii, new_output) 
+        
+            if p.plot: 
+                if p.verbose: print(f"Saved result to {new_output}; plotting")
+                title = f'{p.dataset} {p.task} sub {test_subject} ISC {nm} sl radius={p.sl_rad}'
+                plotting.plot_stat_map(new_output,output_file=new_output.replace('.nii.gz', '_statmap.png').replace('results','plots'), colorbar=True, cmap=cmap, threshold=0,  title=title)
 
 
 

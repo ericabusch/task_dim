@@ -1,5 +1,8 @@
 from random import choices, choice
 import numpy as np
+from sklearn.utils import check_random_state
+from joblib import Parallel, delayed
+from scipy.stats import pearsonr, spearmanr, kendalltau
 
 
 def permutation_test(data, n_iterations, alternative='greater'):
@@ -41,6 +44,127 @@ def permutation_test(data, n_iterations, alternative='greater'):
     
     pvalue = compare[alternative](null_distribution, observed)
     return observed, pvalue, null_distribution
+
+def fisher_r_to_z(r):
+    """Use Fisher transformation to convert correlation to z score"""
+
+    # return .5*np.log((1 + r)/(1 - r))
+    return np.arctanh(r)
+
+def fisher_z_to_r(z):
+    """Use Fisher transformation to convert correlation to z score"""
+    return np.tanh(z)
+
+def timeseries_correlation_permutation(
+    data1,
+    data2,
+    method="time_shift",
+    n_permute=1000,
+    metric="pearsonr",
+    tail=2,
+    n_jobs=-1,
+    return_perms=False,
+    random_state=None,
+):
+    """Compute correlation and calculate p-value using permutation methods.
+
+    'permute' method randomly shuffles one of the vectors. This method is recommended
+    for independent data. For timeseries data we recommend using 'time_shift' 
+
+    Args:
+
+        data1: (pd.DataFrame, pd.Series, np.array) dataset 1 to permute
+        data2: (pd.DataFrame, pd.Series, np.array) dataset 2 to permute
+        n_permute: (int) number of permutations
+        metric: (str) type of association metric ['spearman','pearson', 'kendall']
+        method: (str) type of permutation ['permute', 'time_shift']
+        random_state: (int, None, or np.random.RandomState) Initial random seed (default: None)
+        tail: (int) either 1 for one-tail or 2 for two-tailed test (default: 2)
+        n_jobs: (int) The number of CPUs to use to do the computation.
+                -1 means all CPUs.
+        return_parms: (bool) Return the permutation distribution along with the p-value; default False
+    Returns:
+        stats: (dict) dictionary of permutation results ['correlation','p']
+    """
+    if len(data1) != len(data2):
+        raise ValueError("Make sure that data1 is the same length as data2")
+
+    if method not in ["permute", "time_shift"]:
+        raise ValueError(
+            "Make sure that method is ['permute', 'time_shift']"
+        )
+
+    random_state = check_random_state(random_state)
+
+    data1 = np.array(data1)
+    data2 = np.array(data2)
+    assert data1.ndim <= 2, "data1 must be 1D or 2D"
+    assert data1.shape == data2.shape, "data shapes must match"
+
+    correlation_metrics = {
+        "spearmanr": spearmanr,
+        "pearsonr": pearsonr,
+        "kendalltau": kendalltau,
+    }
+    
+    if data1.ndim > 1 or data2.ndim > 1:
+        stats = {k:func(data1.ravel(),data2.ravel())[0] for k, func in correlation_metrics.items()} 
+    else:
+        stats = {k:func(data1, data2)[0] for k, func in correlation_metrics.items()} 
+    
+    correlation = stats[metric]
+
+    if method == "permute":
+        null_correlations = Parallel(n_jobs=n_jobs)(
+            delayed(correlation)(random_state.permutation(data1), data2, metric=metric)
+            for _ in range(n_permute)
+        ) 
+    elif method == "time_shift":
+        null_correlations = Parallel(n_jobs=n_jobs)(
+            delayed(circular_shift_correlation)(data1, data2, correlation_metrics[metric], p)  for p in range(n_permute)
+        )
+
+    stats["p"] = calc_pvalue(null_correlations, correlation, tail)
+    stats["correlation"] = correlation
+    if return_perms:
+        stats["perm_distribution"] = null_correlations
+    return stats
+
+def circular_shift_correlation(data1, data2, correlation_function, repetition_number=1):
+    """
+    Generate a null distribution by circularly shifting a timeseries by multiples of step_size.
+
+    Parameters
+    ----------
+    
+    Returns
+    -------
+    null_dist : np.ndarray, shape (n_repetitions, T)
+        Array of shifted timeseries (each row is a shifted version).
+    """
+    shifted = np.roll(data1.T, repetition_number).T.ravel()
+    return correlation_function(shifted, data2.ravel())[0]
+
+
+
+def calc_pvalue(null_stats, true_stat, tail):
+    """Calculates p value based on distribution of correlations
+    This function is called by the permutation functions
+        all_p: list of correlation values from permutation
+        stat: actual value being tested, i.e., stats['correlation'] or stats['mean']
+        tail: (int) either 2 or 1 for two-tailed p-value or one-tailed
+    """
+
+    denom = float(len(null_stats)) + 1
+    if tail == 1:
+        numer = np.sum(null_stats >= true_stat) + 1 if true_stat >= 0 else np.sum(null_stats <= true_stat) + 1
+    elif tail == 2:
+        numer = np.sum(np.abs(null_stats) >= np.abs(true_stat)) + 1
+    else:
+        raise ValueError("tail must be either 1 or 2")
+    return numer / denom
+
+
 
 def false_discovery_control(ps, *, axis=0, method='bh'):
     """Adjust p-values to control the false discovery rate.
