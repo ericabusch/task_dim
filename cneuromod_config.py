@@ -4,11 +4,12 @@ from os.path import join
 
 NJOBS=16
 VERBOSE=True
-ROOT = ''
+ROOT = '/gpfs/milgram/project/turk-browne/users/elb77'
 SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
 KNN=5
 THRESHOLD=0.9
-IDE_METHODS = ['TPHATE_DiffOp_IDE','TPHATE_VNE_IDE', 'PHATE_VNE_IDE','PCA','MLE']
+IDE_METHODS = ['TPHATE_DiffOp_IDE','PHATE_DiffOp_IDE', 'MiND_ML','PCA','MLE','lPCA']
+
 
 ## CONFIG INFO FOR CNEUROMOD
 BASE_DIR_CNEUROMOD='/gpfs/milgram/project/turk-browne/projects/CNeuroMod'

@@ -6,14 +6,9 @@ from numpy import linalg
 from scipy.linalg import svd
 from sklearn.decomposition import PCA
       
-def diffop_eig_ide(X, threshold=0.9, knn=5):
+def diffop_eig_ide(X, threshold=0.9):
     eigenvalues, _ = np.linalg.eig(X)
-    eigenvalues = eigenvalues[1:] 
-    # sort eigenvalues, keep real components
     sorted_eigenvalues = np.real(np.sort(eigenvalues)[::-1])
-    # retain only positive
-    # discard negatives & the first eigenvalue
-    sorted_eigenvalues = sorted_eigenvalues[sorted_eigenvalues>0]
     explained_variance_ratio = sorted_eigenvalues / np.sum(sorted_eigenvalues)
     cumulative_variance = np.cumsum(explained_variance_ratio)
     n = np.where(cumulative_variance>threshold)[0][0]+1
@@ -27,13 +22,20 @@ def compute_tphate_optt(X, threshold=0.9,knn=5):
 def compute_tphate_ide(X, threshold=0.9,knn=5):
     tph=tphate.TPHATE(verbose=0, knn=knn)
     tph.fit(X)
-    return diffop_eig_ide(tph.diff_op, threshold)
+    D=tph.diff_op
+    return diffop_eig_ide(D, threshold)
+
+def compute_phate_ide(X, threshold=0.9,knn=5):
+    tph=tphate.TPHATE(verbose=0, knn=knn)
+    tph.fit(X)
+    D=tph.phate_diffop
+    return diffop_eig_ide(D, threshold)
 
 def compute_PCA_dim(X, threshold=0.9, knn=5):
     pca = PCA()
     pca.fit(X)
     cum_var_exp = np.cumsum(pca.explained_variance_ratio_)
-    return np.where(cum_var_exp >= threshold)[0][0]
+    return np.where(cum_var_exp > threshold)[0][0]+1
 
 def compute_MiND_ML(X, threshold=0.9, knn=5):
     mod = id.MiND_ML()
@@ -59,17 +61,6 @@ def compute_CorrInt(X, threshold=0.9, knn=5):
     mod = id.CorrInt()
     return mod.fit_transform(X)
 
-def compute_tphate_dim(X, threshold=0.9, knn=5):
-    tph = tphate.TPHATE(verbose=0, knn=knn).fit(X)
-    entropy = compute_vne_curve(tph.diff_op, tmax=100)
-    loc = find_elbow_point(entropy)
-    return loc
-
-def compute_phate_dim(X, threshold=0.9, knn=5):
-    ph=tphate.TPHATE(verbose=0, knn=knn).fit(X)
-    entropy = compute_vne_curve(ph.phate_diffop, tmax=100)
-    loc = find_elbow_point(entropy)
-    return loc
 
 def compute_vne_curve(X, tmax=100):
     eigenvalues, _ = np.linalg.eig(X)
@@ -123,13 +114,10 @@ def find_elbow_point(y, x=None):
     return x[loc] 
 
 METHODS = {'TPHATE_DiffOp_IDE':compute_tphate_ide,
-           'TPHATE_VNE_IDE': compute_tphate_dim,
-           'PHATE_VNE_IDE':compute_phate_dim,
+           "PHATE_DiffOp_IDE":compute_phate_ide,
           'MiND_ML':compute_MiND_ML, 
           'MLE': compute_MLE, 
-          #'KNN': compute_KNN,
-          'FisherS':compute_FisherS, 
-          #'CorrInt':compute_CorrInt, 
+           'TPHATE_optt':compute_tphate_optt,
           'lPCA':compute_lPCA,
            'PCA':compute_PCA_dim,
           }

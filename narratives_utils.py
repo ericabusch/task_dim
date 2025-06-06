@@ -2,7 +2,8 @@ import json, glob
 from os.path import join, exists
 import os
 import nibabel as nib
-from config import *
+import numpy as np
+from narratives_config import *
 import pandas as pd
 import seaborn as sns
 import matplotlib
@@ -98,6 +99,8 @@ def get_subject_data(sub_id, task,trim=False,file_idx=0):
     if 'sub' not in sub_id:
         sub_id = f'sub-{sub_id}'
     fn = glob.glob(NARRATIVES_DATA_DIRS[task.lower()]+f'/{sub_id}*.nii.gz')[file_idx]
+    print(NARRATIVES_DATA_DIRS[task.lower()])
+    print(fn)
     nii = nib.load(fn)
     return nii
 
@@ -116,7 +119,7 @@ def get_metric_SL_nii_subject(subject, task, metric, file_idx=0, filter_by_age=0
         filestr = ''
     else: 
         dirname = f'{dirname}/IDE/LOSO/results'
-        filestr = f'file_idx_{file_idx}'
+        filestr = f''
     f = sorted(glob.glob(f'{dirname}/{subject}_{task}*{filestr}*{metric}_whole_brain_SL_rad{slrad}.nii.gz'))[0]
     return nib.load(f)
 
@@ -128,7 +131,7 @@ def get_metric_atlas_nii_subject(subject, task, metric, file_idx=0, filter_by_ag
         filestr = ''
     else:# metric in METHOD_NAMES:
         dirname = f'{dirname}/IDE/LOSO_parcel/results'
-        filestr = f'file_idx_{file_idx}'
+        filestr = f''
     f = sorted(glob.glob(f'{dirname}/{subject}_{task}*{filestr}*{metric}.nii.gz'))[0]
     return nib.load(f)
 

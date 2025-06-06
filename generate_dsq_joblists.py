@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
     
         
-    if p.atlas == 0:
+    if p.atlas == 0 and 'aggregate' not in p.script_name.lower():
         # we know we're running SL and need to activate that command
         call = 'srun --mpi=pmi2 python -u'
     else:

@@ -7,7 +7,7 @@ import seaborn as sns
 import os, sys, glob
 import nilearn 
 import nibabel as nib
-import config
+import bkup_dec24.config as config
 from nilearn import datasets
 from scipy import stats
 from nilearn import plotting

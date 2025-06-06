@@ -96,7 +96,7 @@ def get_scratch_dir():
     return d
 
 def get_fmriprep_input_dir():
-    return RAW_HBN_DIR
+    return MY_PREPROC_HBN
 
 def get_fmriprep_subjects(debug=0):
     with open(f'{HBN_OUTDIR}/fmriprep_participants.txt','r') as f:
@@ -153,18 +153,15 @@ def get_brain_cmap(mpl_colorname='inferno'):
     return brain_cmap
 
 
-def get_subject_data_fmriprep_output(sub_id, task):
-    nii_fns, conf_fns, new_fns, mask_fns = [], [], [], []
-    fn = sorted(glob.glob(f'{DATALAD_DIR_HBN}/{sub_id}/*/func/*{task}_space-MNI152NLin6ASym_reg-36Parameter_desc-preproc_bold.nii.gz'))[0]
-    mask  = sorted(glob.glob(f'{DATALAD_DIR_HBN}/{sub_id}/*/func/*{task}*-bold_mask.nii.gz'))[0]
-    base_fn = fn.split('/')[-1]
-    new_base = base_fn.replace('.nii.gz','3mm_masked.nii.gz')
-    base_dir = get_basedir()
-    os.makedirs(f'{base_dir}/{task}/', exist_ok=True)
-    new_fn = f'{base_dir}/{task}/{new_base}'
-    return [fn],[], [new_fn], [mask]
+def get_subject_fmriprep_output_files(sub_id, task):
+    print(f'{MY_PREPROC_HBN}/{sub_id}')
+    nii_fn = sorted(glob.glob(f'{MY_PREPROC_HBN}/{sub_id}/*/func/*{task}*_space-MNI152Lin_desc-preproc_bold.nii.gz'))[0]
+    conf_fn = sorted(glob.glob(f'{MY_PREPROC_HBN}/{sub_id}/*/func/*{task}*_desc-confounds_timeseries.tsv'))[0]
+    mask_fn = sorted(glob.glob(f'{MY_PREPROC_HBN}/{sub_id}/*/func/*{task}*_space-MNI152Lin_desc-brain_mask.nii.gz'))[0]
+    return nii_fn, conf_fn, mask_fn
 
-
+def get_TR():
+    return TR
 
 def get_metric_SL_nii_subject(subject, task, metric, file_idx=0, filter_by_age=0, slrad=5):
     dirname = get_scratch_dir()

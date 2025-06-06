@@ -48,6 +48,7 @@ def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer'):
     for i, train_sub in enumerate(train_subjects):
         nii = utils.get_subject_data(train_sub, task, trim=True)
         masked_nii = masker_wb.fit_transform(nii)
+        masked_nii=np.nan_to_num(masked_nii)
         arr=np.add(arr,masked_nii)
         print(f'added train sub {i}/{len(train_subjects)}')
     arr=arr/len(train_subjects)
@@ -61,7 +62,6 @@ def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer'):
         test_roi_data = np.nan_to_num(masker.fit_transform(test_nii))
         n_voxels = test_roi_data.shape[1]
         train_roi_data = masker.fit_transform(train_nii)
-        #print(f'INITIALLY: test {test_roi_data.shape}, {train_roi_data.shape}') 
         # filter missing values
         missing_masks = np.array([remove_missing(X) for X in [train_roi_data, test_roi_data]]) # where everyone's missing
         mask = np.sum(missing_masks, axis=0) # sum across participants; will yield n_subj where all have the balue
@@ -70,9 +70,7 @@ def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer'):
         # now filter every volume with the mask
         train_roi_data = np.squeeze(train_roi_data[:,mask].ravel()) 
         test_roi_data = np.squeeze(test_roi_data[:,mask].ravel())
-        #print(f'AFTER MASK: train roi data shape: {train_roi_data.shape}, test_roi_data: {test_roi_data.shape}')
         r = np.corrcoef(test_roi_data, train_roi_data)[0,1]
-        # print(f'ISC: {r}')
         expanded = np.repeat(r, n_voxels).reshape(1,-1).astype("double")
         tokens = atlas_df.iloc[roi_id]['labels']
         roi_str = tokens.decode("UTF-8")
@@ -138,10 +136,10 @@ if __name__ == '__main__':
         outfn_base=f'{results_outdir}/results_all/{test_subject}_{p.task}_{p.atlas}_filter_{p.subject_filter}'
 
     results_df.to_csv(outfn_base+'_all_ISC_results.csv')
-    cmap=utils.get_brain_cmap()
     nib.save(results_volume,f'{outfn_base}_ISC.nii.gz')
     if VERBOSE: print(f'saved {outfn_base}_ISC.nii.gz')
     if p.plot:
+       cmap=utils.get_brain_cmap()
        title = f'{p.dataset} {p.task} {test_subject} ISC'
        f = outfn_base.replace(results_outdir, plot_outdir)+f'statmap.png'
        plotting.plot_stat_map(results_volume, output_file=f, colorbar=True, threshold=0.001, cmap=cmap, title=title)

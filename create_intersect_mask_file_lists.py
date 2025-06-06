@@ -2,7 +2,7 @@
 figures out what subjects for what tasks go into what file list for intersect mask 
 '''
 import os, sys, glob, argparse
-from config import *
+from bkup_dec24.config import *
 
 
 def get_filenames(dataset, subject_list):

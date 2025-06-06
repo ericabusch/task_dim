@@ -5,8 +5,8 @@ VERBOSE=True
 ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
 SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
 KNN=5
-THRESHOLD=0.9
-IDE_METHODS = ['TPHATE_DiffOp_IDE','TPHATE_VNE_IDE', 'PHATE_VNE_IDE','PCA','MLE']
+THRESHOLD=0.85
+IDE_METHODS = ['TPHATE_DiffOp_IDE','PCA']
 
 BASE_DIR_PARTLY_CLOUDY = '/gpfs/milgram/project/turk-browne/projects/partly_recon'
 PC_SUBJECTS = [f'sub-pixar{i:03d}' for i in range(1,156)]
