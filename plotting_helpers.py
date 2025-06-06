@@ -5,30 +5,84 @@ import seaborn as sns
 import nibabel as nib
 from nilearn import plotting, image, glm
 import numpy as np
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import ticker
 from mpl_toolkits.axes_grid1 import ImageGrid
-import os,sys,glob
+import os,sys,glob,math
+from PIL import Image
 from surfplot import Plot
 from neuromaps.transforms import mni152_to_fslr, mni152_to_fsaverage, mni152_to_civet, _estimate_density, fsaverage_to_fsaverage
 from neuromaps.datasets import fetch_fslr, fetch_fsaverage, fetch_civet
 from collections import defaultdict
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-def make_layers_dict(data, cmap, alpha=0.75, label=None, color_range=None, cbar=True):
-
+def make_layers_dict(data, cmap, mask=None, alpha=0.75, label=None, color_range=None, cbar=True):
 	d = defaultdict()
 	d['data'] = data
+	d['mask'] = mask
 	d['cmap'] = cmap
 	d['alpha'] = alpha
 	d['label'] = label
 	d['color_range'] = color_range
 	d['cbar'] = cbar
-	
 	return d
+
+def diverging_colormap_bp():
+    """
+    Create a continuous diverging colormap using hex codes:
+    dark blue -> turquoise -> white -> pink -> red
+    Returns a matplotlib colormap object.
+    """
+    # Hex codes for the colors
+    colors = [
+		"#081237",
+        "#0C83AA",  
+        "#30DCFF",
+        "#B3FAFF",  # turquoise
+        "#FFFFFF",  # white
+        "#F8D9FA",  # pink
+        "#FE97F9",
+        "#FF0090",   
+		"#53001D"
+    ]
+    colormap = LinearSegmentedColormap.from_list("custom_diverging_hex", colors)
+    return colormap
+
+def diverging_colormap_gp():
+    """
+    Create a continuous diverging colormap using hex codes:
+    dark blue -> turquoise -> white -> pink -> red
+    Returns a matplotlib colormap object.
+    """
+    # Hex codes for the colors
+    colors = [
+        "#154500",  
+        "#34AE00",
+        "#84FF00",  
+        "#FFFFFF",  # white
+        "#F8D9FA",  
+        "#FE97F9",
+        "#FF0090"   
+    ]
+    colormap = LinearSegmentedColormap.from_list("custom_diverging_hex", colors)
+    return colormap
+
+def get_palette7_rainbow():
+	hex = ["#ED5151",'#FE7F2D', '#FCCA46', '#A1C181', '#47A8BD','#B47BBF',"#FF91E7"]
+	palette7_rainbow = sns.color_palette(hex)
+	return palette7_rainbow
 
 def sigmoid(x):
 	return 1 / (1 + np.exp(-x))
 
 def create_depth_map(surf_type='fsaverage', target_density='41k'):
+	'''
+	Creates a depth map for the given surface type and density
+	surf_type in ['fsaverage', 'fslr', 'civet']
+	target_density in ['3k', '10k', '41k', '164k'] for fsaverage
+		target_density in ['4k', '8k', '32k', '164k'] for fslr
+		target_density in ['41k', '164k'] for civet
+	'''
 
 	if surf_type == 'fsaverage':
 		assert (target_density in ['3k', '10k', '41k', '164k'])
@@ -53,8 +107,45 @@ def create_depth_map(surf_type='fsaverage', target_density='41k'):
 
 	return depth
 
+def apply_surface_mask(data_surface, mask_surface):
+	'''
+	Applies a mask to the surface data
+	data_surface: dictionary with keys 'left' and 'right' containing the surface data
+	mask_surface: dictionary with keys 'left' and 'right' containing the mask data
+	'''
+	data_lh = data_surface['left'].agg_data()
+	data_rh = data_surface['right'].agg_data()
+	mask_lh = np.array(mask_surface['left'].agg_data())
+	mask_rh = np.array(mask_surface['right'].agg_data())
+
+	data_lh[np.where(mask_lh == 0)[0]] = np.nan
+	data_rh[np.where(mask_rh == 0)[0]] = np.nan
+
+	surf_lh = nib.gifti.GiftiImage()
+	surf_array = nib.gifti.GiftiDataArray(data_lh.squeeze(), intent='NIFTI_INTENT_SHAPE', datatype='NIFTI_TYPE_FLOAT32')
+	surf_lh.add_gifti_data_array(surf_array)
+	surf_rh = nib.gifti.GiftiImage()
+	surf_array = nib.gifti.GiftiDataArray(data_rh.squeeze(), intent='NIFTI_INTENT_SHAPE', datatype='NIFTI_TYPE_FLOAT32')
+	surf_rh.add_gifti_data_array(surf_array)
+	masked_data = {'left':surf_lh, 'right':surf_rh}
+	return masked_data
+
 def vol_to_surf(ds, surf_type='fsaverage', map_type='inflated', target_density='41k', method='linear'):
-	
+	'''
+	Takes a volumetric image and makes a gifti surface ready
+	for plotting
+	surf_type in ['fsaverage', 'fslr', 'civet']
+	map_type in ['inflated', 'pial', 'white', 'smoothwm']
+	target_density in ['3k', '10k', '41k', '164k'] for fsaverage
+		target_density in ['4k', '8k', '32k', '164k'] for fslr
+		target_density in ['41k', '164k'] for civet
+	method in ['linear', 'nearest', 'nearest_vertex']
+		linear: linear interpolation
+		nearest: nearest neighbor interpolation
+		nearest_vertex: nearest vertex interpolation
+	'''
+
+
 	if surf_type == 'fsaverage':
 		assert (target_density in ['3k', '10k', '41k', '164k'])
 		surfaces = fetch_fsaverage(density=target_density)
@@ -70,13 +161,26 @@ def vol_to_surf(ds, surf_type='fsaverage', map_type='inflated', target_density='
 		
 	surfs = surfaces[map_type]
 	data = {'left': data_lh, 'right': data_rh}
-	
-	return surfs, data
+	medial_mask = {'left':nib.load(surfaces['medial'][0]), 'right':nib.load(surfaces['medial'][1])}
+	return surfs, data, medial_mask
 
-def numpy_to_surface(ds, surf_type='fsaverage', map_type='inflated', target_density='41k', method='linear'):
+def numpy_to_surf(ds, surf_type='fsaverage', map_type='inflated', target_density='41k', method='linear'):
 	'''
 	Takes a numpy array surface and makes a gifti surface ready
 	for plotting 
+	surf_type in ['fsaverage', 'fslr', 'civet']
+	map_type in ['inflated', 'pial', 'white', 'smoothwm']
+	target_density in ['3k', '10k', '41k', '164k'] for fsaverage
+		target_density in ['4k', '8k', '32k', '164k'] for fslr
+		target_density in ['41k', '164k'] for civet
+	method in ['linear', 'nearest', 'nearest_vertex']
+		linear: linear interpolation
+		nearest: nearest neighbor interpolation
+		nearest_vertex: nearest vertex interpolation
+		nearest_vertex is only available for fsaverage and fslr
+		nearest is only available for civet
+		linear is available for all
+
 	'''
 
 	ds = ds.astype('float32')
@@ -111,17 +215,39 @@ def numpy_to_surface(ds, surf_type='fsaverage', map_type='inflated', target_dens
 	surfs = surfaces[map_type]
 	data_lh, data_rh = data
 	data = {'left': data_lh, 'right': data_rh}
+	medial_mask = {'left':nib.load(surfaces['medial'][0]), 'right':nib.load(surfaces['medial'][1])}
 
-	return surfs, data
+	return surfs, data, medial_mask
 
 def plot_surf_data(surfs, layers_info, surf_type='fslr', views=['lateral', 'medial'], zoom=1.35, brightness=0.8, scale=(10,10), 
-	surf_alpha=1, add_depth=False, embed_nb=False, colorbar=True, cbar_loc=None, title=None, out_fn=None):
-	
+	surf_alpha=1, add_depth=True, embed_nb=False, colorbar=True, cbar_loc=None, title=None, out_fn=None, mask=True):
+	'''
+	Plot surface data on a brain surface
+	surfs: list of surface data to plot
+	layers_info: list of dictionaries with keys 'data', 'cmap', 'alpha', 'label', 'color_range', 'cbar'
+	surf_type: type of surface to plot
+		surf_type in ['fsaverage', 'fslr', 'civet']
+	views: list of views to plot
+		views in ['lateral', 'medial', 'dorsal', 'ventral', 'anterior', 'posterior']
+	zoom: zoom level for the plot
+	brightness: brightness level for the plot
+	scale: scale for the plot
+	surf_alpha: alpha level for the surface
+	add_depth: if True, add a depth map to the plot
+	embed_nb: if True, embed the plot in a jupyter notebook
+	colorbar: if True, add a colorbar to the plot
+	cbar_loc: location of the colorbar
+		cbar_loc in ['left', 'right', 'top', 'bottom']
+	title: title for the plot
+	out_fn: filename to save the plot
+	'''
+
 	if len(views) == 1:
 		zoom=2.35
 		scale=(10, 5)
 
 	p = Plot(*surfs, views=views, zoom=zoom, brightness=brightness)
+	
 
 	# if we want to add depth insert into the start of the list
 	if add_depth:
@@ -129,8 +255,21 @@ def plot_surf_data(surfs, layers_info, surf_type='fslr', views=['lateral', 'medi
 		density, = _estimate_density((density_est,), hemi=None)
 		depth = create_depth_map(surf_type=surf_type, target_density=density)
 		layers_info.insert(0, depth)
-	
-	for layer in layers_info:
+
+	if mask:
+		temp = []
+		for layer in layers_info:
+			if layer['mask'] is None:
+				temp.append(None)
+			else:
+				data_layer_masked = apply_surface_mask(layer["data"], layer["mask"])
+				temp.append(data_layer_masked)
+		
+		for i in range(len(temp)):
+			if layers_info[i]['mask'] != None:
+				layers_info[i]['data'] = temp[i]
+	for i, layer in enumerate(layers_info):
+		
 		p.add_layer(data=layer['data'], 
 					cmap=layer['cmap'], 
 					cbar_label=layer['label'], 
@@ -157,3 +296,197 @@ def plot_surf_data(surfs, layers_info, surf_type='fslr', views=['lateral', 'medi
 		plt.close('all')
 	
 	return fig, p
+
+def load_schaefer_atlas(resolution_mm=2, yeo_networks=17):
+
+    """
+    Load the Schaefer atlas with specified resolution and Yeo networks.
+
+    Parameters
+    ----------
+    resolution_mm : int
+        The resolution of the atlas in mm.
+    yeo_networks : int
+        The number of Yeo networks to use.
+
+    Returns
+    -------
+    atlas_img : nibabel.Nifti1Image
+        The Schaefer atlas image.
+    """
+    from nilearn.datasets import fetch_atlas_schaefer_2018
+    atlas = fetch_atlas_schaefer_2018(resolution_mm=resolution_mm, yeo_networks=yeo_networks)
+    return nib.load(atlas['maps'])
+
+def expand_parcellation_to_volume(values, atlas_img):
+    """
+    Map region-wise values to a 3D volume based on atlas parcellation.
+
+    Parameters
+    ----------
+    values : array-like, shape (n_regions,)
+        Array of values for each region (region 1 at index 0, region 400 at index 399).
+    atlas_img : niftiabel.Nifti1Image
+		3D image of the brain with regions defined by an atlas, e.g., Schaefer
+        With voxel values 1..n_regions.
+
+    Returns
+    -------
+    out_vol : 3D numpy array
+        Volume with values assigned according to atlas.
+    """
+    atlas_data = atlas_img.get_fdata()
+    out_vol = np.zeros_like(atlas_data, dtype=np.float64)
+    out_vol[:] = 1000  # Set background to nan
+    for region in range(1, len(values)+1):
+        out_vol[atlas_data == region] = values[region-1]
+    out_vol[atlas_data == 0] = np.nan
+    return nib.Nifti1Image(out_vol, atlas_img.affine, atlas_img.header)
+
+def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type='fsaverage', target_density='41k',include_cbar=False, title=None,method='linear',mask_medial_wall=True):
+	"""
+	Generate and save surface plots from data arrays.
+	"""
+	if atlas == 'Schaefer':
+		atlas_img = load_schaefer_atlas()
+		data_arr = np.load(data_fn) if isinstance(data_fn, str) else data_fn
+		vol_img = expand_parcellation_to_volume(data_arr, atlas_img)
+	elif atlas == 'searchlight':
+		vol_img = nib.load(data_fn) if isinstance(data_fn, str) else data_fn
+	else:
+		raise ValueError("Invalid atlas type. Choose 'Schaefer' or 'searchlight'.") 
+	if not isinstance(vol_img, nib.Nifti1Image):
+			raise ValueError("vol_img must be a Nifti image or a valid numpy array.")       
+	
+	surfs, data, mask = vol_to_surf(vol_img, surf_type=surf_type, map_type='inflated', target_density=target_density, method=method)
+	if not mask_medial_wall:
+		mask=None
+	layer = make_layers_dict(
+		data=data, mask=mask, cmap=plt.get_cmap(cmap), alpha=1, color_range=cbar_range, cbar=include_cbar
+	)
+	plot_surf_data(
+		surfs, [layer], surf_type=surf_type, colorbar=include_cbar, title=title, out_fn=image_fn 
+	)
+	print("Generated surface plot:", image_fn)
+	return image_fn, vol_img
+
+def _calc_grid(n):
+    """Calculate grid shape (rows, cols) for n images, minimizing empty space."""
+    ncols = math.ceil(math.sqrt(n))
+    nrows = math.ceil(n / ncols)
+    return nrows, ncols
+
+def _load_images(image_files):
+    """Load images from file paths."""
+    return [Image.open(f) for f in image_files]
+
+def get_global_value_range(data_files):
+    """
+    Given a list of file paths (npy or nii.gz), return (min, max) of all values across all files.
+    """
+    global_min = np.inf
+    global_max = -np.inf
+    assert len(data_files) > 0, "data_files list should not be empty."
+    for f in data_files:
+        if f.endswith('.npy'):
+            data = np.load(f)
+        elif f.endswith('.nii') or f.endswith('.nii.gz'):
+            import nibabel as nib
+            data = nib.load(f).get_fdata()
+        else:
+            raise ValueError(f"Unsupported file type: {f}")
+        # Flatten and ignore NaNs
+        data = data[np.isfinite(data)]
+        if data.size == 0:
+            continue
+        global_min = min(global_min, np.min(data))
+        global_max = max(global_max, np.max(data))
+    global_max = int(np.ceil(global_max))
+    return (global_min, global_max)
+
+def compile_surface_plots_to_grid(image_files, data_files, output_path, atlas='Schaefer', 
+								  surf_type='fsaverage', method='linear', target_density='41k',rerun=False, 
+								  titles=None, main_title=None, cmap='viridis', cbar_range=(0, 1),cbar_label='',mask=True):
+	"""
+	Compile surface plots into a grid, generating them if needed.
+
+	Parameters
+	----------
+	rerun : bool
+		If True, regenerate images from data_files.
+	image_files : list of str
+		Filenames for each image.
+	data_files : list of string, either numpy arrays or Nifti images
+		If rerun is True, these are the data arrays to plot.
+	output_path : str
+		Output filename for the grid plot.
+	atlas : str
+		'Schaefer' or 'searchlight'.
+	titles : list of str
+		Titles for each subplot.
+	main_title : str
+		Main title for the figure.
+	cmap : str
+		Colormap name.
+	cbar_range : tuple
+		Colorbar range (vmin, vmax).
+	"""
+	assert atlas in ['Schaefer', 'searchlight'], "Invalid atlas type. Choose 'Schaefer' or 'searchlight'."
+
+	# Step 1: Check which images exist
+	if not rerun:
+		images_to_visualize = [f for f in image_files if os.path.exists(f)]
+		if len(images_to_visualize) == 0:
+			raise FileNotFoundError("No input images found and rerun is False.")
+	else:
+		images_to_visualize = []
+		for i in range(len(data_files)):
+			fn,_=generate_surface_plot(data_files[i], image_files[i], atlas, cmap, cbar_range, method=method,
+							  surf_type=surf_type, target_density=target_density,mask_medial_wall=mask)
+			images_to_visualize.append(fn)
+
+	# Step 2: Load images
+	images = _load_images(images_to_visualize)
+	n_imgs = len(images)
+	if n_imgs <= 3: 
+		# If 3 or fewer images, use a single row
+		nrows, ncols = 1, n_imgs
+	else:
+		nrows, ncols = _calc_grid(n_imgs)
+
+	# Step 3: Plot grid
+	fig_w, fig_h = images[0].width / 100, images[0].height / 100
+	fig, axes = plt.subplots(
+		nrows, ncols, figsize=(fig_w * ncols, fig_h * nrows + 1)
+	)
+	axes = axes.flatten() if n_imgs > 1 else [axes]
+
+	for idx, (ax, img) in enumerate(zip(axes, images)):
+		ax.imshow(img)
+		ax.axis('off')
+		if titles and idx < len(titles):
+			ax.set_title(titles[idx], fontsize=32, pad=16)
+	# Main title
+	if main_title:
+		plt.suptitle(main_title, fontsize=32, y=0.98)
+
+	# Hide unused axes
+	for ax in axes[n_imgs:]:
+		ax.axis('off')
+
+	# Colorbar (vertical, right, full height)
+	norm = plt.Normalize(vmin=cbar_range[0], vmax=cbar_range[1])
+	sm = plt.cm.ScalarMappable(cmap=plt.get_cmap(cmap), norm=norm)
+	sm.set_array([])
+
+	# Add a new axis for the colorbar that spans the full height of the figure
+	# [left, bottom, width, height] in figure coordinates
+	cbar_ax = fig.add_axes([0.92, 0.12, 0.025, 0.76])
+	cbar = plt.colorbar(sm, cax=cbar_ax, orientation='vertical')
+	cbar.set_label(cbar_label, fontsize=36, labelpad=24)
+	cbar.ax.tick_params(labelsize=32)
+
+	plt.subplots_adjust(left=0.05, right=0.9, top=0.9, bottom=0.08, wspace=0.2, hspace=0.25)
+	plt.savefig(output_path, bbox_inches='tight', dpi=300)
+	print(f"Compiled surface plots into grid: {output_path}")
+	plt.close(fig)
