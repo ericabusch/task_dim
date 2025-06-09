@@ -1,0 +1,15 @@
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s0307_1_2_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s0307_2_1_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s0687_1_2_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s1187_1_2_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s2307_1_2_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s2687_1_2_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s5187_1_2_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s5687_1_2_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s6607_1_1_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s6687_1_2_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s6687_1_1_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s8187_1_6_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s8187_1_8_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s8607_1_1_Z.nii.gz
+/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/s8687_1_2_Z.nii.gz

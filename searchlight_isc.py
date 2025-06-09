@@ -44,7 +44,7 @@ def load_data(sub_id, task):
     return bold_data, brain_mask.get_fdata(), affine_mat, dimensions
 
 def isc_kernel(data, sl_mask, myrad, bcvar):
-    metric=bcvar[0] if len(bcvar) > 0 else 'pearson'
+    metric= ISC_METRIC #bcvar[0] if len(bcvar) > 0 else 'pearson'
     num_voxels_in_sl = sl_mask.shape[0] * sl_mask.shape[1] * sl_mask.shape[2]
     test_data = np.nan_to_num(data[0].ravel()) # flatten into  timepointsxvoxels
     train_data = np.nan_to_num(data[1].ravel()) # flatten into timepointsxvoxels
@@ -65,12 +65,14 @@ def isc_stats_kernel(data, sl_mask, myrad, bcvar):
     # check for unique values 
     test_data = data[0] 
     train_data = data[1]
+    test_data = test_data.reshape(test_data.shape[-1], num_voxels_in_sl)
+    train_data = train_data.reshape(train_data.shape[-1], num_voxels_in_sl)
     n1 = np.linalg.norm(train_data)
     n2 = np.linalg.norm(test_data)
     if n1 == 0 or n2 == 0: 
         return [np.nan , np.nan]
-    metric = bcvar[0] if len(bcvar) > 0 else 'pearson'
-    stats = timeseries_correlation_permutation(train_data, test_data, method='time_shift', n_permute=1000, metric=metric, tail=2, n_jobs=-1, return_perms=False)
+    metric = ISC_METRIC# bcvar[0] if len(bcvar) > 0 else 'pearson'
+    stats = timeseries_correlation_permutation(test_data, train_data, method='time_shift', n_permute=1000, metric=metric, tail=2, n_jobs=-1, return_perms=False)
     return [stats['correlation'], stats['p']]
 
 if __name__ == '__main__':
@@ -83,7 +85,7 @@ if __name__ == '__main__':
     parser.add_argument('-c','--run_stats', type=int, default=1)
     parser.add_argument('-s','--subject_filter', type=str, default="0")
     parser.add_argument('-v','--verbose', type=int, default=1)
-    parser.add_argument('-o', '--overwrite', type=int, default=0)
+    parser.add_argument('-o', '--overwrite', type=int, default=1)
     parser.add_argument('-p', '--plot', type=int, default=0)
     p = parser.parse_args()
 
@@ -202,7 +204,7 @@ if __name__ == '__main__':
     else:
         # Run the searchlight analysis
         if p.verbose: print(f"Begin Searchlight ISC with stats in rank {rank}")
-        sl_result = sl.run_searchlight(isc_kernel, pool_size=pool_size)
+        sl_result = sl.run_searchlight(isc_stats_kernel, pool_size=pool_size)
         if p.verbose: print(f"End Searchlight in rank {rank}")
         cmap = 'magma'
 

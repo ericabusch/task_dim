@@ -2,31 +2,35 @@
 figures out what subjects for what tasks go into what file list for intersect mask 
 '''
 import os, sys, glob, argparse
-from bkup_dec24.config import *
+# from bkup_dec24.config import *
 
 
 def get_filenames(dataset, subject_list):
-	tasks = utils.get_tasks()
-	filenames = []
-	for task in tasks:
-		fns = utils.get_task_filenames(subject_list, task)
-		print(f'loaded {len(fns)} for {task}')
-		filenames += fns
-	return filenames
+    tasks = utils.get_tasks()
+    filenames = []
+    for task in tasks:
+        fns = utils.get_task_filenames(subject_list, task)
+        print(f'loaded {len(fns)} for {task}')
+        filenames += fns
+    return filenames
 
 
 def write_filelist(out_filename, list_of_files):
-	with open(out_filename, 'w') as f:
-		for fn in list_of_files:
-			f.write(fn+'\n')
-	if VERBOSE: print(f'wrote to {out_filename}')
+    with open(out_filename, 'w') as f:
+        for fn in list_of_files:
+            f.write(fn+'\n')
+    if VERBOSE: print(f'wrote to {out_filename}')
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser()
-	parser.add_argument('-d','--dataset',type=str)
-	p = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d','--dataset',type=str)
+    parser.add_argument('-t','--task',type=str)
+    parser.add_argument('-s','--subject_filter',type=str,default='all')
+    parser.add_argument('-v','--verbose',type=bool,default=True)
 
-	# import the right utils file
+    p = parser.parse_args()
+
+    # import the right utils file
     if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
     elif p.dataset.lower() == 'adult_restmovie': import adult_restmovie_utils as utils; import adult_restmovie_config as config
     elif p.dataset.lower() == 'camcan': import camcan_utils as utils; import camcan_config as config
@@ -37,18 +41,27 @@ if __name__ == '__main__':
     else: print(f'{p.dataset} not valid'); sys.exit(1)
     if p.verbose: print(f'loaded {p.dataset}_utils')
     VERBOSE=config.VERBOSE
-	
-	if p.dataset.lower() != 'infant_restmovie':
-		all_subjects = utils.get_intersecting_subjects(subject_filter=0)
-		all_filenames = get_filenames(p.dataset, all_subjects)
-		out_filename = f'{utils.get_out_dir()}/files_for_3mm_intersect_mask.txt'
-		if VERBOSE: print(f'writing {len(all_filenames)} names to {out_filename}')
-		write_filelist(out_filename, all_filenames)
-	else:
-		tasks = utils.get_tasks()
-		for t in tasks:
-			subject_list = config.INFANT_SUBJECTS_TASKS[t] 
-			fns = utils.get_task_filenames(subject_list, t)
-			out_filename = f'{utils.get_out_dir()}/files_for_intersect_mask_{t}.txt'
-			write_filelist(out_filename, fns)
-			
+
+    if p.dataset.lower() == 'hbn':
+        all_subjects = utils.determine_intersecting_subjects(subject_filter=p.subject_filter)
+        print(f'{len(all_subjects)} in group {p.subject_filter}')
+        all_filenames = utils.get_task_filenames(all_subjects, p.task)
+        out_filename = f'{utils.get_out_dir()}/hbn_files_for_intersect_mask_{p.subject_filter}_{p.task}.txt'
+        if VERBOSE: print(f'writing {len(all_filenames)} names to {out_filename}')
+        write_filelist(out_filename, all_filenames)
+
+
+    elif p.dataset.lower() != 'infant_restmovie':
+        all_subjects = utils.get_intersecting_subjects(subject_filter=0)
+        all_filenames = utils.get_bold_masks_filenames(all_subjects, task=p.task)
+        out_filename = f'{utils.get_out_dir()}/files_for_intersect_mask.txt'
+        if VERBOSE: print(f'writing {len(all_filenames)} names to {out_filename}')
+        write_filelist(out_filename, all_filenames)
+    else:
+        tasks = utils.get_tasks()
+        for t in tasks:
+            subject_list = config.INFANT_SUBJECTS_TASKS[t] 
+            fns = utils.get_task_filenames(subject_list, t)
+            out_filename = f'{utils.get_out_dir()}/files_for_intersect_mask_{t}.txt'
+            write_filelist(out_filename, fns)
+

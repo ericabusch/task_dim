@@ -1,0 +1,12 @@
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/aeronaut_mickey_lPCA_SL_difference_maps_all_subjects.nii.gz
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/aeronaut_mickey_MiND_ML_SL_difference_maps_all_subjects.nii.gz
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/aeronaut_mickey_PCA_SL_difference_maps_all_subjects.nii.gz
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/aeronaut_mickey_TPHATE_DiffOp_IDE_SL_difference_maps_all_subjects.nii.gz
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/aeronaut_sleep_lPCA_SL_difference_maps_all_subjects.nii.gz
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/aeronaut_sleep_MiND_ML_SL_difference_maps_all_subjects.nii.gz
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/aeronaut_sleep_PCA_SL_difference_maps_all_subjects.nii.gz
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/aeronaut_sleep_TPHATE_DiffOp_IDE_SL_difference_maps_all_subjects.nii.gz
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/mickey_sleep_lPCA_SL_difference_maps_all_subjects.nii.gz
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/mickey_sleep_MiND_ML_SL_difference_maps_all_subjects.nii.gz
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/mickey_sleep_PCA_SL_difference_maps_all_subjects.nii.gz
+/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/InfantRestMovie/results/task_difference_maps/mickey_sleep_TPHATE_DiffOp_IDE_SL_difference_maps_all_subjects.nii.gz

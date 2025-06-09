@@ -60,7 +60,7 @@ def timeseries_correlation_permutation(
     data2,
     method="time_shift",
     n_permute=1000,
-    metric="pearsonr",
+    metric="pearson",
     tail=2,
     n_jobs=-1,
     return_perms=False,
@@ -98,12 +98,11 @@ def timeseries_correlation_permutation(
 
     data1 = np.array(data1)
     data2 = np.array(data2)
-    assert data1.ndim <= 2, "data1 must be 1D or 2D"
     assert data1.shape == data2.shape, "data shapes must match"
 
     correlation_metrics = {
-        "spearmanr": spearmanr,
-        "pearsonr": pearsonr,
+        "spearman": spearmanr,
+        "pearson": pearsonr,
         "kendalltau": kendalltau,
     }
     

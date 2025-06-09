@@ -10,6 +10,7 @@ import ide_helpers as ide
 from scipy import stats
 from nilearn import plotting
 from nilearn.maskers import NiftiMasker, NiftiLabelsMasker
+from stats_helper import timeseries_correlation_permutation
 from nilearn.image import math_img, index_img
 
 def load_atlas(atlas_name='Schaefer'):
@@ -30,14 +31,15 @@ def remove_missing(X, return_mask=True):
     filtered_X = X[:,mask]
     return filtered_X
 
-def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer'): 
+def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer', wb_mask=None): 
     atlas_image, atlas_df = load_atlas(atlas_name)
-    nii = utils.get_subject_data(test_subject, task, trim=True)
+    nii = utils.get_subject_data(test_subject, task)
     if type(nii) == list:
         nii = nii[0]
     if VERBOSE: print(f"Original test shape: {nii.shape}")
     # apply whole-brain mask, then invert
-    wb_mask = utils.get_intersect_mask()
+    if not wb_mask:
+        wb_mask = utils.get_intersect_mask()
     masker_wb = NiftiMasker(mask_img=wb_mask, standardize=True)
     masked_nii = masker_wb.fit_transform(nii)
     n_timepoints, n_voxels = masked_nii.shape
@@ -46,7 +48,7 @@ def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer'):
 
     arr = np.empty((n_timepoints, n_voxels))
     for i, train_sub in enumerate(train_subjects):
-        nii = utils.get_subject_data(train_sub, task, trim=True)
+        nii = utils.get_subject_data(train_sub, task)
         masked_nii = masker_wb.fit_transform(nii)
         masked_nii=np.nan_to_num(masked_nii)
         arr=np.add(arr,masked_nii)
@@ -55,7 +57,7 @@ def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer'):
     train_nii = masker_wb.inverse_transform(arr)
     if VERBOSE: print(f"train shape: {train_nii.shape} from {arr.shape}")
     results_volume = None
-    results_df = pd.DataFrame(columns=['region_name','score'])
+    results_df = pd.DataFrame(columns=['region_name','score','p'])
     for roi_id in atlas_df.index[1:]:
         roi_mask_img = math_img(f"img == {roi_id}", img=atlas_image)
         masker = NiftiMasker(roi_mask_img, standardize=True)
@@ -68,19 +70,27 @@ def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer'):
         mask = mask == len(missing_masks)
         if config.VERBOSE: print(f'including {np.sum(mask)} / {n_voxels}) for roi={roi_id}')
         # now filter every volume with the mask
-        train_roi_data = np.squeeze(train_roi_data[:,mask].ravel()) 
-        test_roi_data = np.squeeze(test_roi_data[:,mask].ravel())
-        r = np.corrcoef(test_roi_data, train_roi_data)[0,1]
+        train_roi_data = np.squeeze(train_roi_data[:,mask]) 
+        test_roi_data = np.squeeze(test_roi_data[:,mask])
+        if RUN_STATS:
+            metric = ISC_METRIC# bcvar[0] if len(bcvar) > 0 else 'pearson'
+            these_stats = timeseries_correlation_permutation(test_roi_data, train_roi_data, method='time_shift', n_permute=1000, metric=metric, tail=2, n_jobs=-1, return_perms=False)
+            r = these_stats['correlation']
+            p = these_stats['p']
+        else:
+            r = stats.pearsonr(test_roi_data.ravel(), train_roi_data.ravel())[0]
+            p = np.nan
+            
         expanded = np.repeat(r, n_voxels).reshape(1,-1).astype("double")
         tokens = atlas_df.iloc[roi_id]['labels']
         roi_str = tokens.decode("UTF-8")
         temp =  masker.inverse_transform(expanded)
         if results_volume == None:
-                results_volume = temp
+            results_volume = temp
         else:
             v = results_volume
             results_volume = math_img(f'img1 + img2', img1 = v, img2=temp)
-        results_df.loc[len(results_df)] = {'region_name':roi_str, 'score':r}
+        results_df.loc[len(results_df)] = {'region_name':roi_str, 'score':r, 'p':p}
 
     results_df['task']=np.repeat(task, len(results_df))
     results_df['subject']=np.repeat(test_subject, len(results_df))
@@ -100,7 +110,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--overwrite', type=int, default=1)
     parser.add_argument('-p', '--plot', type=int, default=1)
     p = parser.parse_args()
-
+    RUN_STATS=False
     # import the right utils/config file
     if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
     elif p.dataset.lower() == 'adult_restmovie': import adult_restmovie_utils as utils; import adult_restmovie_config as config
@@ -112,7 +122,7 @@ if __name__ == '__main__':
     else: print(f'{p.dataset} not valid'); sys.exit(1)
     if p.verbose: print(f'loaded {p.dataset}_utils')
     VERBOSE=config.VERBOSE
-    
+    ISC_METRIC='pearson'
     # load target subject
     ALL_SUBJECTS = utils.get_intersecting_subjects(subject_filter=p.subject_filter)
     
@@ -124,26 +134,30 @@ if __name__ == '__main__':
     train_subjects = np.setdiff1d(ALL_SUBJECTS,test_subject) # JUST FOR TESTING
     print(test_subject, train_subjects)
     if p.verbose: print(f'running subject {test_subject} of {len(train_subjects)} training subs')
-
+    if p.dataset.lower() == 'hbn':
+        wb_mask=utils.get_intersect_mask(p.subject_filter, p.task)
+        print(f'loaded WB Mask of shape {wb_mask.shape}')
+    else:
+        wb_mask=None
     results_outdir = os.path.join(utils.get_scratch_dir(), 'ISC', 'LOSO_parcel', 'results')
     plot_outdir = results_outdir.replace('results', 'plots')
     os.makedirs(results_outdir,exist_ok=True)
     os.makedirs(plot_outdir,exist_ok=True)
-    results_df, results_volume = run_subject_isc(test_subject, train_subjects, p.task, atlas_name=p.atlas)
+    results_df, results_volume = run_subject_isc(test_subject, train_subjects, p.task, atlas_name=p.atlas, wb_mask=wb_mask)
 
     outfn_base = f'{results_outdir}/{test_subject}_{p.task}_{p.atlas}'
     if p.subject_filter != '0': 
         outfn_base=f'{results_outdir}/results_all/{test_subject}_{p.task}_{p.atlas}_filter_{p.subject_filter}'
 
     results_df.to_csv(outfn_base+'_all_ISC_results.csv')
-    nib.save(results_volume,f'{outfn_base}_ISC.nii.gz')
+    nib.save(results_volume, f'{outfn_base}_ISC.nii.gz')
     if VERBOSE: print(f'saved {outfn_base}_ISC.nii.gz')
     if p.plot:
-       cmap=utils.get_brain_cmap()
-       title = f'{p.dataset} {p.task} {test_subject} ISC'
-       f = outfn_base.replace(results_outdir, plot_outdir)+f'statmap.png'
-       plotting.plot_stat_map(results_volume, output_file=f, colorbar=True, threshold=0.001, cmap=cmap, title=title)
-       print(f'plotted at {f}')
+        cmap=utils.get_brain_cmap()
+        title = f'{p.dataset} {p.task} {test_subject} ISC'
+        f = outfn_base.replace(results_outdir, plot_outdir)+f'statmap.png'
+        plotting.plot_stat_map(results_volume, output_file=f, colorbar=True, threshold=0.001, cmap=cmap, title=title)
+        print(f'plotted at {f}')
 
 
 

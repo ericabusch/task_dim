@@ -1,0 +1,98 @@
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t motor -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t motor -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t motor -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t motor -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t motor -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t restingstate -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t restingstate -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t restingstate -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t restingstate -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t social -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t social -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t social -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t social -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t social -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t wm -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t wm -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t wm -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t wm -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t wm -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t gambling -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t gambling -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t gambling -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t gambling -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t gambling -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t emotion -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t emotion -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t emotion -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t emotion -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t emotion -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t language -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t language -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t language -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t language -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t language -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t relational -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t relational -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t relational -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t relational -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t relational -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t s01e04a -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t s01e04a -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t s01e04a -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t s01e04a -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t s01e04a -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t s01e04b -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t s01e04b -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t s01e04b -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t s01e04b -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -a 1 -t s01e04b -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t motor -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t motor -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t motor -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t motor -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t motor -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t restingstate -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t restingstate -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t restingstate -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t restingstate -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t social -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t social -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t social -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t social -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t social -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t wm -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t wm -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t wm -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t wm -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t wm -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t gambling -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t gambling -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t gambling -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t gambling -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t gambling -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t emotion -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t emotion -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t emotion -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t emotion -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t emotion -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t language -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t language -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t language -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t language -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t language -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t relational -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t relational -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t relational -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t relational -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t relational -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t s01e04a -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t s01e04a -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t s01e04a -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t s01e04a -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t s01e04a -m PCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t s01e04b -m ISC
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t s01e04b -m TPHATE_DiffOp_IDE
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t s01e04b -m MiND_ML
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t s01e04b -m lPCA
+python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/aggregate_results_volumes.py -d cneuromod -t s01e04b -m PCA

@@ -1,0 +1,7 @@
+python -u  /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/atlas_isc.py -d partly_cloudy -t pixar -s 3yo
+python -u  /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/atlas_isc.py -d partly_cloudy -t pixar -s 4yo
+python -u  /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/atlas_isc.py -d partly_cloudy -t pixar -s 5yo
+python -u  /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/atlas_isc.py -d partly_cloudy -t pixar -s 7yo
+python -u  /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/atlas_isc.py -d partly_cloudy -t pixar -s 8-12yo
+python -u  /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/atlas_isc.py -d partly_cloudy -t pixar -s Adult
+python -u  /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/atlas_isc.py -d partly_cloudy -t pixar -s all
