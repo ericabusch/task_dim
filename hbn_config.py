@@ -11,6 +11,7 @@ SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
 TR = 1.450
 KNN=5
 THRESHOLD=0.9
+TRIM=-1
 IDE_METHODS = ['TPHATE_DiffOp_IDE','PHATE_DiffOp_IDE', 'MiND_ML','PCA','MLE','lPCA']
 # my dataset
 MY_PREPROC_HBN='/gpfs/milgram/project/casey/elb77/HBN_Prep'

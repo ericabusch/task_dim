@@ -12,15 +12,15 @@
 module load miniconda
 module load FSL/6.0.5-centos7_64;
 . /gpfs/milgram/apps/hpc.rhel7/software/FSL/6.0.5-centos7_64/etc/fslconf/fsl.sh;
+conda activate env_tda
 # start environment
-conda activate env_tda;
-cd /gpfs/milgram/project/turk-browne/users/elb77/task_dim/joblists
+cd /gpfs/milgram/project/turk-browne/users/elb77/task_dim
 
-input_filelist=$1 # file with filenames that will be used for making the mask
-filelist=`cat ${input_filelist}`
-num_files=`echo $filelist | wc -w`
-echo Running $num_files files from $input_filelist
+dirname="adult_restmovie/results/task_comparisons/"
 
+#filelist=("adult_restmovie/results/task_comparisons/rest_mickey_all_subjects.nii.gz" "adult_restmovie/results/task_comparisons/rest_aeronaut_all_subjects.nii.gz")
+#echo Running $num_files files
+filelist=("adult_restmovie/results/task_comparisons/rest_aeronaut_all_subjects.nii.gz")
 for file in $filelist
 do
     fn=$file

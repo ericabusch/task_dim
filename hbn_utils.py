@@ -14,15 +14,20 @@ from nilearn.image import index_img
 # from ide_helpers import METHOD_NAMES
 
 def determine_intersecting_subjects(subject_filter='all'):
-    '''
-    right now includes 614 subjects with all three tasks complete
-    '''
+    # '''
+    # right now includes 614 subjects with all three tasks complete
+    # '''
+    # includes 393 subjects fuly preproc as of 6/7
+    with open(f'{HBN_OUTDIR}/subject_list_0607.txt','r') as f:
+        lines=f.readlines()
+    lines=[l.strip() for l in lines]
+    print(lines[:10])
     if subject_filter=='all' or subject_filter == '0': 
-    	return get_intersecting_subjects()
+        return sorted(list(lines))
     par_df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}')
-    par_df = par_df[par_df['confirmed_3_tasks']]
+    par_df = par_df[par_df['subject_id'].isin(lines)]
     participants = par_df[par_df['AgeGroup1']==subject_filter]['subject_id'].values
-    return sorted(list(participants))
+    return participants
 
 def get_groups():
     par_df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}')
@@ -113,14 +118,14 @@ def get_task_filenames(subject_list, task):
     '''
     filenames = []
     for s in subject_list:
-        f = sorted(glob.glob(f'{BASE_DIR_HBN}/{task}/{s}*.nii.gz'))
+        f = sorted(glob.glob(f'{BASE_DIR_HBN}/derivatives/afni-smooth/{s}/func/*{task}*desc-clean.nii.gz'))
         if len(f) == 0:
-            print(f'{BASE_DIR_HBN}/{task}/{s} DNE')
+            print(f'{BASE_DIR_HBN}/derivatives/afni-smooth/{s}/func/*{task}*desc-clean.nii.gz DNE')
             continue
         filenames += f
     return filenames
     
-def get_subject_data(sub_id, task='', trim=True, file_idx=0):
+def get_subject_data(sub_id, task='', trim=False, file_idx=0):
     fn = get_task_filenames([sub_id], task)[0]
     nii = nib.load(fn)
     if trim:
@@ -130,8 +135,8 @@ def get_subject_data(sub_id, task='', trim=True, file_idx=0):
 def get_basedir():
     return BASE_DIR_HBN
 
-def get_intersect_mask(subject_filter=0):
-    fn = HBN_INTERSECT_MASK
+def get_intersect_mask(subject_filter,task):
+    fn = f'{ROOT}/task_dim/HBN/masks/HBN_intersect_mask_{subject_filter}_{task}.nii.gz'
     return nib.load(fn)
 
 def has_repeat_files(subject, task):

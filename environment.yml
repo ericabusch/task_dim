@@ -290,4 +290,25 @@ dependencies:
   - zstandard==0.23.0=py39h8cd3c5a_2
   - zstd==1.5.6=ha6fb4c9_0
   - vtk==9.1.0=osmesa_py39h8ab48e2_107
-prefix: /gpfs/radev/home/elb77/.conda/envs/dim_env
+  - pip:
+      - brainspace==0.1.20
+      - deprecated==1.2.18
+      - ephate==0.1
+      - future==1.0.0
+      - graphtools==1.5.3
+      - greenlet==3.2.2
+      - llvmlite==0.43.0
+      - neuromaps==0.0.5+41.gf0ed67c
+      - numba==0.60.0
+      - obspy==1.4.2
+      - pygsp==0.5.1
+      - s-gd2==1.8.1
+      - scikit-dimension==0.3.4
+      - scprep==1.2.3
+      - sqlalchemy==1.4.54
+      - surfplot==0.2.0
+      - tasklogger==1.2.0
+      - tphate==1.1
+      - vtk==9.3.1
+      - wrapt==1.17.2
+prefix: /gpfs/milgram/project/casey/elb77/conda_envs/dim_env
