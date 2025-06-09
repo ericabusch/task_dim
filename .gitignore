@@ -12,4 +12,6 @@
 bkup*
 code_from_TLB/
 log/*
-
+*/*ipynb*
+*.tsv
+*/log/*
