@@ -1,2 +1,0 @@
-/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/RestMovie/results/task_difference_maps_v2/aeronaut_rest_TPHATE_DiffOp_IDE_SL_difference_maps_all_subjects.nii.gz
-/gpfs/milgram/pi/turk-browne/users/elb77/task_dim/RestMovie/results/task_difference_maps_v2/mickey_rest_TPHATE_DiffOp_IDE_SL_difference_maps_all_subjects.nii.gz

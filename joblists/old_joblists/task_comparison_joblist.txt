@@ -1,5 +1,0 @@
-python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py  -d rest_movie -m TPHATE_FisherS -o 1 --plot 1 -s 0
-python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py  -d rest_movie -m PHATE_FisherS -o 1 --plot 1 -s 0
-python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py  -d rest_movie -m DIFF_MAP_FisherS -o 1 --plot 1 -s 0
-python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py  -d rest_movie -m TPHATE_SE_at_t -o 1 --plot 1 -s 0
-python -u /gpfs/milgram/pi/turk-browne/users/elb77/task_dim/task_comparison.py  -d rest_movie -m PHATE_SE_at_t -o 1 --plot 1 -s 0
