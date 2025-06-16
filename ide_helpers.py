@@ -22,6 +22,11 @@ def compute_tphate_optt(X, threshold=0.9,knn=5):
 def compute_tphate_ide(X, threshold=0.9,knn=5):
     tph=tphate.TPHATE(verbose=0, knn=knn)
     tph.fit(X)
+    if tph.dropoff == 1:
+        print('found no autocorr; revising')
+        tph=tphate.TPHATE(verbose=0, knn=knn, smooth_window=4)
+        tph.fit(X)
+        print(f'AC is now {tph.dropoff}; continuing')
     D=tph.diff_op
     return diffop_eig_ide(D, threshold)
 

@@ -57,7 +57,7 @@ def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer', w
     train_nii = masker_wb.inverse_transform(arr)
     if VERBOSE: print(f"train shape: {train_nii.shape} from {arr.shape}")
     results_volume = None
-    results_df = pd.DataFrame(columns=['region_name','score','p'])
+    results_df = pd.DataFrame(columns=['region_name','score','p', 'z'])
     for roi_id in atlas_df.index[1:]:
         roi_mask_img = math_img(f"img == {roi_id}", img=atlas_image)
         masker = NiftiMasker(roi_mask_img, standardize=True)
@@ -74,12 +74,14 @@ def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer', w
         test_roi_data = np.squeeze(test_roi_data[:,mask])
         if RUN_STATS:
             metric = ISC_METRIC# bcvar[0] if len(bcvar) > 0 else 'pearson'
-            these_stats = timeseries_correlation_permutation(test_roi_data, train_roi_data, method='time_shift', n_permute=1000, metric=metric, tail=2, n_jobs=-1, return_perms=False)
+            these_stats = timeseries_correlation_permutation(test_roi_data, train_roi_data, method='time_shift', n_permute=1000, metric=metric, tail='two-tailed', n_jobs=-1, return_perms=False)
             r = these_stats['correlation']
             p = these_stats['p']
+            z = these_stats['zstat'] # [stats['correlation'], stats['p'], stats['zstat']]
         else:
             r = stats.pearsonr(test_roi_data.ravel(), train_roi_data.ravel())[0]
             p = np.nan
+            z = np.nan
             
         expanded = np.repeat(r, n_voxels).reshape(1,-1).astype("double")
         tokens = atlas_df.iloc[roi_id]['labels']
@@ -90,7 +92,7 @@ def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer', w
         else:
             v = results_volume
             results_volume = math_img(f'img1 + img2', img1 = v, img2=temp)
-        results_df.loc[len(results_df)] = {'region_name':roi_str, 'score':r, 'p':p}
+        results_df.loc[len(results_df)] = {'region_name':roi_str, 'score':r, 'p':p, 'z':z}
 
     results_df['task']=np.repeat(task, len(results_df))
     results_df['subject']=np.repeat(test_subject, len(results_df))
@@ -107,10 +109,11 @@ if __name__ == '__main__':
     parser.add_argument('-s','--subject_filter', type=str, default='0')
     parser.add_argument('-a', '--atlas',type=str,default='Schaefer')
     parser.add_argument('-v','--verbose', type=int, default=1)
+    parser.add_argument('-r','--run_stats', type=int, default=1)
     parser.add_argument('-o', '--overwrite', type=int, default=1)
     parser.add_argument('-p', '--plot', type=int, default=1)
     p = parser.parse_args()
-    RUN_STATS=False
+    RUN_STATS=bool(p.run_stats)
     # import the right utils/config file
     if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
     elif p.dataset.lower() == 'adult_restmovie': import adult_restmovie_utils as utils; import adult_restmovie_config as config

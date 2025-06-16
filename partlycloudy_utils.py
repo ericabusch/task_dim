@@ -54,7 +54,7 @@ def get_subject_age(subject_id):
 
 def get_subject_group(subject_id):
     par_df = pd.read_csv(f'{PC_PARTICIPANT_DF}')
-    age_group = par_df[par_df['participant_id']==subject_id]['AgeGroup'].item()
+    age_group = par_df[par_df['participant_id']==subject_id]['AgeGroupV2'].item()
     return age_group
 
 def get_intersecting_subjects(subject_filter='all'):

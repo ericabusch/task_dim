@@ -72,8 +72,8 @@ def isc_stats_kernel(data, sl_mask, myrad, bcvar):
     if n1 == 0 or n2 == 0: 
         return [np.nan , np.nan]
     metric = ISC_METRIC# bcvar[0] if len(bcvar) > 0 else 'pearson'
-    stats = timeseries_correlation_permutation(test_data, train_data, method='time_shift', n_permute=1000, metric=metric, tail=2, n_jobs=-1, return_perms=False)
-    return [stats['correlation'], stats['p']]
+    stats = timeseries_correlation_permutation(test_data, train_data, method='time_shift', n_permute=1000, metric=metric, tail='two-tailed', n_jobs=-1, return_perms=False)
+    return [stats['correlation'], stats['p'], stats['zstat']]
 
 if __name__ == '__main__':
 
@@ -216,8 +216,8 @@ if __name__ == '__main__':
         if p.verbose: print(f'result vec of shape: {result_vec.shape}; saving to {new_output}')
         N = 2
         result_vec = [N*[0] if not n else n for n in result_vec] # replace all None
-        for i, nm in zip(np.arange(N), ['correlation', 'p']):
-            new_output = output_name.replace('.nii.gz','_{nm}.nii.gz')
+        for i, nm in zip(np.arange(N), ['correlation', 'p', 'zstat']):
+            new_output = output_name.replace('.nii.gz',f'_{nm}.nii.gz')
             result_vol = np.zeros_like(wb_mask)
             res = [r[i] for r in result_vec]
             result_vol[coords] = res

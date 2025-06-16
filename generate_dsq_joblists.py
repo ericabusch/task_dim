@@ -138,18 +138,18 @@ if __name__ == "__main__":
             TO_LOOP['is'] = [overall_subject_indices, overall_group_labels]
                 
             
-    
-    # If script name has ISC or IDE, we know we have to use subjects
-    if 'isc' in p.script_name.lower()  or 'ide' in p.script_name.lower():
+    else:
+        # If script name has ISC or IDE, we know we have to use subjects
+        if 'isc' in p.script_name.lower()  or 'ide' in p.script_name.lower():
 
-        ALL_SUBJECTS = utils.get_intersecting_subjects()
-        TO_LOOP['i'] = np.arange(len(ALL_SUBJECTS))
-        print(f'looping through {len(ALL_SUBJECTS)} subjects')
+            ALL_SUBJECTS = utils.get_intersecting_subjects()
+            TO_LOOP['i'] = np.arange(len(ALL_SUBJECTS))
+            print(f'looping through {len(ALL_SUBJECTS)} subjects')
 
-    if 'aggregate' in p.script_name.lower():
-        M = config.IDE_METHODS + ['ISC']
-        TO_LOOP['m'] = M 
-        print(f'looping through {len(M)} metrics')
+        if 'aggregate' in p.script_name.lower():
+            M = config.IDE_METHODS + ['ISC']
+            TO_LOOP['m'] = M 
+            print(f'looping through {len(M)} metrics')
 
     
         

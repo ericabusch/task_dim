@@ -4,8 +4,8 @@ NJOBS=16
 VERBOSE=True
 ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
 SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
-KNN=5
-THRESHOLD=0.85
+KNN=10
+THRESHOLD=0.9
 IDE_METHODS = ['TPHATE_DiffOp_IDE','PCA']
 
 ### CONFIG INFO FOR NARRATIVES ##

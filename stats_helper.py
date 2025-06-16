@@ -61,7 +61,7 @@ def timeseries_correlation_permutation(
     method="time_shift",
     n_permute=1000,
     metric="pearson",
-    tail=2,
+    tail='two-tailed',
     n_jobs=-1,
     return_perms=False,
     random_state=None,
@@ -123,8 +123,10 @@ def timeseries_correlation_permutation(
             delayed(circular_shift_correlation)(data1, data2, correlation_metrics[metric], p)  for p in range(n_permute)
         )
 
-    stats["p"] = calc_pvalue(null_correlations, correlation, tail)
+    z, p = calc_pval_zstat(null_correlations, correlation, tail)
     stats["correlation"] = correlation
+    stats["p"]=p
+    stats["zstat"]=z
     if return_perms:
         stats["perm_distribution"] = null_correlations
     return stats
@@ -146,23 +148,27 @@ def circular_shift_correlation(data1, data2, correlation_function, repetition_nu
 
 
 
-def calc_pvalue(null_stats, true_stat, tail):
+def calc_pval_zstat(null_stats, true_stat, tail='two-tailed'):
     """Calculates p value based on distribution of correlations
     This function is called by the permutation functions
         all_p: list of correlation values from permutation
         stat: actual value being tested, i.e., stats['correlation'] or stats['mean']
         tail: (int) either 2 or 1 for two-tailed p-value or one-tailed
     """
+    mu = np.mean(null_stats)
+    sigma = np.std(null_stats)
+    z = (true_stat - mu) / sigma
 
-    denom = float(len(null_stats)) + 1
-    if tail == 1:
-        numer = np.sum(null_stats >= true_stat) + 1 if true_stat >= 0 else np.sum(null_stats <= true_stat) + 1
-    elif tail == 2:
-        numer = np.sum(np.abs(null_stats) >= np.abs(true_stat)) + 1
+    if tail == 'two-tailed':
+        p = 2 * min(np.mean(null_stats >= true_stat), np.mean(null_stats <= true_stat))
+    elif tail == 'greater':
+        p = np.mean(null_stats >= true_stat)
+    elif tail == 'less':
+        p = np.mean(null_stats <= true_stat)
     else:
-        raise ValueError("tail must be either 1 or 2")
-    return numer / denom
-
+        raise ValueError("tail must be 'two-tailed', 'greater', or 'less'")
+    return z, p
+    
 
 
 def false_discovery_control(ps, *, axis=0, method='bh'):

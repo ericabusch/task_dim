@@ -22,19 +22,42 @@ def load_atlas(atlas_name='Schaefer'):
         print(f'{atlas_name} not implemented')
     return atlas_image, atlas_df
 
-def remove_missing(X):
+def remove_missing(X, missing=0):
     threshold = X.shape[0] // 20 # 5% are 0
-    n_missing = np.sum(X==0, axis=0)
+    n_missing = np.sum(X==missing, axis=0)
     mask = n_missing <= threshold
     filtered_X = X[:,mask]
     return filtered_X
 
+def check_empty_features(arr, threshold):
+    """
+    Returns True if the number of features (columns) where all samples are zero
+    exceeds the given threshold.
+
+    Parameters
+    ----------
+    arr : np.ndarray
+        Array of shape (n_samples, n_features).
+    threshold : int
+        Maximum allowed number of all-zero features.
+
+    Returns
+    -------
+    bool
+        True if number of all-zero features > threshold, else False.
+    """
+    zero_features = np.sum(np.all(arr == 0, axis=0))
+    return zero_features > threshold
+
 def run_subject_ide(sub_id, task, file_idx=0, atlas_name='Schaefer'): 
     atlas_image, atlas_df = load_atlas(atlas_name)
-    nii = utils.get_subject_data(sub_id, task, trim=True, file_idx=file_idx)
+    nii = utils.get_subject_data(sub_id, task, trim=False, file_idx=file_idx)
     print(f"Original shape: {nii.shape}")
     # apply whole-brain mask, then invert
-    wb_mask = utils.get_intersect_mask()
+    if NEED_GROUP:
+        wb_mask = utils.get_intersect_mask(GROUP,task)
+    else:
+        wb_mask = utils.get_intersect_mask()
     masker_wb = NiftiMasker(mask_img=wb_mask, standardize=True)
     masked_nii = masker_wb.fit_transform(nii)
     nii = masker_wb.inverse_transform(masked_nii)
@@ -44,17 +67,21 @@ def run_subject_ide(sub_id, task, file_idx=0, atlas_name='Schaefer'):
     results_df = pd.DataFrame(columns=['ide_method','region_name','id_estimate'])
     for roi_id in atlas_df.index[1:]:
         roi_mask_img = math_img(f"img == {roi_id}", img=atlas_image)
-        masker = NiftiMasker(roi_mask_img, standardize=True)
+        masker = NiftiMasker(roi_mask_img, standardize=False)
         roi_data = np.nan_to_num(masker.fit_transform(nii))
+        
         tokens = atlas_df.iloc[roi_id]['labels']
         roi_str = tokens.decode("UTF-8")
+        
         #if VERBOSE: print(f'before masking, roi_data={np.shape(roi_data)}')
         if np.linalg.norm(roi_data) == 0: 
             R = np.empty(len(METHODS_TO_RUN))
             R[:] = np.nan
             if VERBOSE: print(f'no unique input values')
+        elif check_empty_features(roi_data, MIN_ACTIVE_PROPORTION):
+            if VERBOSE: print('not enough active voxels')
+            R = [np.nan]*len(METHODS_TO_RUN)
         else:
-            roi_data = remove_missing(roi_data)
             #if VERBOSE: print(f'after masking, {roi_str} = {np.shape(roi_data)}')
             R = []
             for meth_name in METHODS_TO_RUN:
@@ -112,18 +139,26 @@ if __name__ == '__main__':
     VERBOSE=config.VERBOSE
     KNN=config.KNN
     THRESHOLD=config.THRESHOLD
-
+    MIN_ACTIVE_PROPORTION=0.5
     METHODS_TO_RUN = config.IDE_METHODS
     METHODS_OUTPUT_LABELS = METHODS_TO_RUN  
+    NEED_GROUP=False
 
      # load target subject
     ALL_SUBJECTS = utils.get_intersecting_subjects(subject_filter=p.subject_filter)
+    
     
     # make sure the desired subject exists
     if len(ALL_SUBJECTS) < p.subject_idx:
         print(f'test subject idx {p.subject_idx} not in list of len {len(ALL_SUBJECTS)}')
         sys.exit(2)
+    
     this_subject = ALL_SUBJECTS[p.subject_idx]
+    if p.dataset.lower() == 'hbn':
+        NEED_GROUP=True
+        GROUP = utils.get_subject_group(this_subject)
+        print(f'subject {this_subject} in group {GROUP}')
+        
     results_outdir = os.path.join(utils.get_scratch_dir(), 'IDE', 'LOSO_parcel', 'results')
     plot_outdir = results_outdir.replace('results', 'plots')
     os.makedirs(results_outdir,exist_ok=True)

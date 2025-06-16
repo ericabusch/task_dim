@@ -127,6 +127,7 @@ def get_task_filenames(subject_list, task):
     
 def get_subject_data(sub_id, task='', trim=False, file_idx=0):
     fn = get_task_filenames([sub_id], task)[0]
+    print(fn)
     nii = nib.load(fn)
     if trim:
         nii = index_img(nii, np.arange(TRIM))
@@ -187,13 +188,13 @@ def get_metric_atlas_nii_subject(subject, task, metric, file_idx=0, filter_by_ag
     dirname = get_scratch_dir()
     if metric == 'ISC':
         dirname = f'{dirname}/ISC/LOSO_parcel/results/results_all'
-        filestr = f'filter_{filter_by_age}'
+        filestr = f'filter_{filter_by_age}_'
     else:# metric in METHOD_NAMES:
         dirname = f'{dirname}/IDE/LOSO_parcel/results'
         filestr = f''
     try:
         f = sorted(glob.glob(f'{dirname}/{subject}_{task.lower()}*_{filestr}{metric}.nii.gz'))[0]
-        # print(f'{dirname}/{subject}_{task.lower()}*_{filestr}{metric}.nii.gz')
+        print(f'{dirname}/{subject}_{task.lower()}*_{filestr}{metric}.nii.gz')
     except:
         f = sorted(glob.glob(f'{dirname}/{subject}_{task}*_{filestr}{metric}.nii.gz'))[0]
     return nib.load(f)

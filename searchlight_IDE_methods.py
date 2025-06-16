@@ -34,6 +34,26 @@ def load_data(sub_id, task, file_idx=0):
     M = brain_mask.get_fdata()
     return bold_data, M, affine_mat, dimensions
 
+def check_empty_features(arr, threshold):
+    """
+    Returns True if the number of features (columns) where all samples are zero
+    exceeds the given threshold.
+
+    Parameters
+    ----------
+    arr : np.ndarray
+        Array of shape (n_samples, n_features).
+    threshold : int
+        Maximum allowed number of all-zero features.
+
+    Returns
+    -------
+    bool
+        True if number of all-zero features > threshold, else False.
+    """
+    zero_features = np.sum(np.all(arr == 0, axis=0))
+    return zero_features > threshold
+
 def remove_missing(X):
     threshold = X.shape[0] // 20 # 5% are 0
     n_missing = np.sum(X==0, axis=0)
@@ -51,7 +71,15 @@ def IDE_kernel(data, sl_mask, myrad, bcvar):
     data_arr = np.nan_to_num(data.reshape(num_voxels_in_sl, n_timepoints).T) # data should already be normed
     
     # check for unique input values 
-    if np.linalg.norm(data_arr) == 0: return np.nan, np.nan
+    if np.linalg.norm(data_arr) == 0: 
+        return np.nan, np.nan
+    
+    # check if there are enough voxels active
+    if check_empty_features(data_arr, min_active_proportion):
+        print('not enough active voxels')
+        R = [np.nan]*len(METHODS_HERE)
+        return R
+        
     data_arr = remove_missing(data_arr)
     
     R = []
@@ -88,6 +116,7 @@ if __name__ == '__main__':
     size = comm.size
     max_blk_edge = 5
     pool_size = 2
+    min_active_proportion=0.5
 
     # import the right utils file
     if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
@@ -142,7 +171,7 @@ if __name__ == '__main__':
         wb_mask = wb_mask.get_fdata()
 
     # set up searchlight
-    sl = Searchlight(sl_rad=p.sl_rad, max_blk_edge=max_blk_edge, min_active_voxels_proportion=0.5)
+    sl = Searchlight(sl_rad=p.sl_rad, max_blk_edge=max_blk_edge, min_active_voxels_proportion=min_active_proportion)
     sl.distribute(data, wb_mask)
     sl.broadcast(bcvar)
     

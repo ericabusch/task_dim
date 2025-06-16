@@ -115,7 +115,10 @@ if __name__ == '__main__':
     if p.verbose: print(f'loaded {p.dataset}_utils')
     VERBOSE=config.VERBOSE
     
-    brain_mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
+    if p.dataset.lower() == 'hbn':
+        brain_mask = utils.get_intersect_mask(task=p.task, subject_filter=p.subject_filter)
+    else:
+        brain_mask = utils.get_intersect_mask(subject_filter=p.subject_filter)
     mask_coords = np.where(brain_mask.get_fdata() == 1)
     all_subjects = utils.get_intersecting_subjects(subject_filter=p.subject_filter)
 
