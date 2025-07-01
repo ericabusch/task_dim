@@ -5,6 +5,7 @@ import seaborn as sns
 import nibabel as nib
 from nilearn import plotting, image, glm
 import numpy as np
+import tempfile
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import ticker
 from mpl_toolkits.axes_grid1 import ImageGrid
@@ -71,6 +72,9 @@ def get_palette7_rainbow():
 	hex = ["#ED5151",'#FE7F2D', '#FCCA46', '#A1C181', '#47A8BD','#B47BBF',"#FF91E7"]
 	palette7_rainbow = sns.color_palette(hex)
 	return palette7_rainbow
+
+def get_paired_palette():
+	return sns.color_palette(["#3943B7", "#C1C4EC", "#32A287", '#9EE6B2', "#E14B67","#EAAEB9",'#F06305',"#FDC29B"])
 
 def sigmoid(x):
 	return 1 / (1 + np.exp(-x))
@@ -240,6 +244,7 @@ def plot_surf_data(surfs, layers_info, surf_type='fslr', views=['lateral', 'medi
 		cbar_loc in ['left', 'right', 'top', 'bottom']
 	title: title for the plot
 	out_fn: filename to save the plot
+	mask: if True, apply a mask to the surface data
 	'''
 
 	if len(views) == 1:
@@ -343,7 +348,7 @@ def expand_parcellation_to_volume(values, atlas_img):
     out_vol[atlas_data == 0] = np.nan
     return nib.Nifti1Image(out_vol, atlas_img.affine, atlas_img.header)
 
-def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type='fsaverage', target_density='41k',include_cbar=False, title=None,method='linear',mask_medial_wall=True):
+def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type='fsaverage', target_density='41k',include_cbar=False, title=None,method='linear', threshold=None, mask_medial_wall=True):
 	"""
 	Generate and save surface plots from data arrays.
 	"""
@@ -361,6 +366,25 @@ def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type=
 	surfs, data, mask = vol_to_surf(vol_img, surf_type=surf_type, map_type='inflated', target_density=target_density, method=method)
 	if not mask_medial_wall:
 		mask=None
+
+	# --- Masking logic ---
+	if threshold is not None:
+        # Get the colorbar center
+		center = (cbar_range[0] + cbar_range[1]) / 2
+		for hemi in ['left', 'right']:
+			arr = data[hemi].agg_data().copy()
+			if abs(center) < 1e-6:  # Centered at 0
+				mask_idx = (arr > -threshold) & (arr < threshold)
+			else:  # Not centered at 0
+				mask_idx = (arr > 0) & (arr < threshold)
+			arr[mask_idx] = np.nan
+            # Update the data object
+			new_img = nib.gifti.GiftiImage()
+			new_img.add_gifti_data_array(
+                nib.gifti.GiftiDataArray(arr.squeeze(), intent='NIFTI_INTENT_SHAPE', datatype='NIFTI_TYPE_FLOAT32')
+            )
+			data[hemi] = new_img
+	
 	layer = make_layers_dict(
 		data=data, mask=mask, cmap=plt.get_cmap(cmap), alpha=1, color_range=cbar_range, cbar=include_cbar
 	)
@@ -369,6 +393,62 @@ def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type=
 	)
 	print("Generated surface plot:", image_fn)
 	return image_fn, vol_img
+
+def compile_surface_plots_to_grid_from_niftis(
+    nifti_images,
+    output_path,
+    atlas='Schaefer',
+    surf_type='fsaverage',
+    method='linear',
+    target_density='41k',
+    titles=None,
+    main_title=None,
+    cmap='viridis',
+    cbar_range=(0, 1),
+    cbar_label='',
+    threshold=None,
+    mask=True,
+    rerun=True
+):
+    """
+    Like compile_surface_plots_to_grid, but takes a list of Nifti images instead of file paths.
+    """
+    temp_data_files = []
+    temp_image_files = []
+    try:
+        # Save each Nifti image to a temporary file
+        for idx, img in enumerate(nifti_images):
+            tmp_data = tempfile.NamedTemporaryFile(suffix='.nii.gz', delete=False)
+            nib.save(img, tmp_data.name)
+            temp_data_files.append(tmp_data.name)
+            tmp_data.close()
+            temp_image_files.append(tmp_data.name.replace('.nii.gz', '.png'))
+
+        # Call the original helper function
+        compile_surface_plots_to_grid(
+            data_files=temp_data_files,
+            image_files=temp_image_files,
+            output_path=output_path,
+            atlas=atlas,
+            surf_type=surf_type,
+            method=method,
+            target_density=target_density,
+            titles=titles,
+            main_title=main_title,
+            cmap=cmap,
+            cbar_range=cbar_range,
+            cbar_label=cbar_label,
+            threshold=threshold,
+            mask=mask,
+            rerun=rerun
+        )
+    finally:
+        # Clean up temporary files
+        for f in temp_data_files + temp_image_files:
+            try:
+                os.remove(f)
+            except FileNotFoundError:
+                pass
 
 def _calc_grid(n):
     """Calculate grid shape (rows, cols) for n images, minimizing empty space."""
@@ -406,7 +486,7 @@ def get_global_value_range(data_files):
 
 def compile_surface_plots_to_grid(image_files, data_files, output_path, atlas='Schaefer', 
 								  surf_type='fsaverage', method='linear', target_density='41k',rerun=False, 
-								  titles=None, main_title=None, cmap='viridis', cbar_range=(0, 1),cbar_label='',mask=True):
+								  titles=None, main_title=None, cmap='viridis', cbar_range=(0, 1),cbar_label='',threshold=None,mask=True):
 	"""
 	Compile surface plots into a grid, generating them if needed.
 
@@ -442,7 +522,7 @@ def compile_surface_plots_to_grid(image_files, data_files, output_path, atlas='S
 		images_to_visualize = []
 		for i in range(len(data_files)):
 			fn,_=generate_surface_plot(data_files[i], image_files[i], atlas, cmap, cbar_range, method=method,
-							  surf_type=surf_type, target_density=target_density,mask_medial_wall=mask)
+							  surf_type=surf_type, target_density=target_density,mask_medial_wall=mask,threshold=threshold)
 			images_to_visualize.append(fn)
 
 	# Step 2: Load images
