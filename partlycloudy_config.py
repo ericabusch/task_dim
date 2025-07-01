@@ -11,6 +11,7 @@ BASE_DIR_PARTLY_CLOUDY = '/gpfs/milgram/project/turk-browne/projects/partly_reco
 PC_SUBJECTS = [f'sub-pixar{i:03d}' for i in range(1,156)]
 PC_DATA_DIR = f'{BASE_DIR_PARTLY_CLOUDY}/data/resampled_participants/motion_reg/'
 PC_INTERSECT_MASK=f'{ROOT}/task_dim/PartlyCloudy/masks/PartlyCloudy_intersect_mask.nii.gz'
+FMRIPREP_DIR='/gpfs/milgram/data/PartlyCloudy/preprocessed/fmriprep'
 PC_OUTDIR = f'{ROOT}/task_dim/PartlyCloudy/'
 PC_RESULTS_DIR=f'{PC_OUTDIR}/results'
 PC_PARTICIPANT_DF=f'{PC_OUTDIR}/participants.csv'

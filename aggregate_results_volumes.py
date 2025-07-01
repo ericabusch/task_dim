@@ -32,7 +32,6 @@ def load_atlas(atlas_name='Schaefer'):
     if atlas_name == 'Schaefer':
         ATLAS = nilearn.datasets.fetch_atlas_schaefer_2018(resolution_mm=2, yeo_networks=17)
         ATLAS.labels = np.insert(ATLAS.labels, 0, 'Background')
-        
     else:
         print(f'{atlas_name} not implemented')
     return ATLAS
@@ -44,6 +43,18 @@ def load_mask_parcel_data_file(subject, task, metric, file_idx=0, filter_by_age=
     masked_data = masker.fit_transform(nii)
     return np.squeeze(masked_data),masker
 
+def load_parcel_dataframe(subject, task, metric, file_idx=0, filter_by_age=0):
+    df = utils.get_metric_atlas_df_subject(subject, task, metric, filter_by_age=0)
+    
+    if metric != 'ISC':
+        df = df[df['ide_method']==metric]
+    
+    if p.dataset.lower() in ['partlycloudy', 'hbn']:
+        df['AgeGroup']=[utils.get_subject_group(subject)]*len(df)
+        df['Age'] = [utils.get_subject_age(subject)]*len(df)
+    return df
+                                           
+
 def vec2vol(values, mask_nii):
     mask_coords = np.where(mask_nii.get_fdata() == 1)
     X = np.zeros_like(mask_nii.get_fdata())
@@ -53,22 +64,26 @@ def vec2vol(values, mask_nii):
     return vol
 
 def load_parcel_data_to_aggregate(subject_list, task, metric, filter_by_age=0, with_repeats=False):
-    parcelwise_data, maskers = [], []
+    parcelwise_data, maskers, dfs = [], [], []
     for sub_id in subject_list:
         if with_repeats and utils.has_repeat_files(sub_id, task) > 0:
             for i in range(utils.has_repeat_files(sub_id, task)):
                 n,m = load_mask_parcel_data_file(sub_id, task, metric, file_idx=i, filter_by_age=filter_by_age)
                 parcelwise_data.append(n)
                 maskers.append(m)
+                df=load_parcel_dataframe(sub_id, task, metric, file_idx=i, filter_by_age=filter_by_age)
+                dfs.append(df)
         else:
-            try:
-                n,m = load_mask_parcel_data_file(sub_id, task, metric, file_idx=0, filter_by_age=filter_by_age)
-                parcelwise_data.append(n)
-                maskers.append(m)
-            except:
-                print(f'could not load {sub_id} {metric}')
-            
-    return parcelwise_data, maskers
+            # try:
+            n,m = load_mask_parcel_data_file(sub_id, task, metric, file_idx=0, filter_by_age=filter_by_age)
+            df=load_parcel_dataframe(sub_id, task, metric, file_idx=0, filter_by_age=filter_by_age)
+            parcelwise_data.append(n)
+            maskers.append(m)
+            dfs.append(df)
+            # except:
+            #     print(f'could not load {sub_id} {metric}')
+    main_df = pd.concat(dfs)
+    return parcelwise_data, maskers,main_df
 
 def load_SL_data_to_aggregate(subject_list, mask_coords, task, metric, filter_by_age=0, with_repeats=False, slrad=5):
     data = []
@@ -127,7 +142,7 @@ if __name__ == '__main__':
     if not p.use_atlas:
         vectors = load_SL_data_to_aggregate(all_subjects, mask_coords, p.task, p.metric, filter_by_age=p.subject_filter, with_repeats=p.metric != "ISC", slrad=p.sl_rad)
     else:
-        vectors, maskers = load_parcel_data_to_aggregate(all_subjects, p.task, p.metric, filter_by_age=p.subject_filter, with_repeats=p.metric != "ISC")
+        vectors, maskers, main_df = load_parcel_data_to_aggregate(all_subjects, p.task, p.metric, filter_by_age=p.subject_filter, with_repeats=p.metric != "ISC")
 
 
     subject_vectors=np.array(vectors)
@@ -151,6 +166,9 @@ if __name__ == '__main__':
         outfn=outfn.replace(p.task.lower(), f'{p.task.lower()}_subject_filter_{p.subject_filter}')
     if p.use_atlas:
         outfn=outfn.replace('.npy','_atlas.npy')
+        main_df.to_csv(outfn.replace('.npy','_aggregated.csv'))
+        
+        print('saved df')
     np.save(outfn, np.nanmean(subject_vectors, axis=0))
 
     # if SL results, can just stack; if parcel, need to unmask

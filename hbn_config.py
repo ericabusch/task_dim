@@ -9,13 +9,13 @@ VERBOSE=True
 ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
 SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
 TR = 1.450
-KNN=5
+KNN=10
 THRESHOLD=0.9
 TRIM=-1
 IDE_METHODS = ['TPHATE_DiffOp_IDE','PHATE_DiffOp_IDE', 'MiND_ML','PCA','MLE','lPCA']
 # my dataset
 MY_PREPROC_HBN='/gpfs/milgram/project/casey/elb77/HBN_Prep'
-BASE_DIR_HBN = f'/gpfs/milgram/project/turk-browne/projects/HBN_AFNI'
+BASE_DIR_HBN = f'//gpfs/milgram/project/turk-browne/projects/HealthyBrainNetwork/'
 RAW_HBN_DIR='/gpfs/milgram/scratch60/turk-browne/elb77/HBN/HBN_BIDS'
 HBN_INTERSECT_MASK=f'{ROOT}/task_dim/HBN/masks/HBN_intersect_mask.nii.gz'
 # HBN_PARTICIPANTS_ORIG = [f.split('/')[-1] for f in glob.glob(f'{DATALAD_DIR_HBN}/*') if os.path.isdir(f)]

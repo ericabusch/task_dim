@@ -17,7 +17,7 @@ def determine_intersecting_subjects(subject_filter='all'):
     if subject_filter=='all' or subject_filter == '0': 
     	return get_intersecting_subjects()
     par_df = pd.read_csv(f'{PC_PARTICIPANT_DF}')
-    participants = par_df[par_df['AgeGroup']==subject_filter]['participant_id'].values
+    participants = par_df[par_df['AgeGroupV2']==subject_filter]['participant_id'].values
     participants=participants[participants!='sub-pixar053']
     return sorted(list(participants))
 
@@ -29,6 +29,42 @@ def get_sample_data(sample_sub_idx = 0 , roi_id=10):
     masker = NiftiMasker(roi_mask_img, standardize=True)
     roi_data = masker.fit_transform(data)
     return roi_data
+
+def fmriprep_confounds_mean_fd(subject, task, fmriprep_dir=''):
+    """
+    Load confounds file from fmriprep output and compute mean framewise displacement.
+
+    Parameters
+    ----------
+    bids_dir : str
+        Path to the BIDS derivatives/fmriprep directory.
+    subject : str
+        Subject label (e.g., '01' or 'sub-01').
+    task : str
+        Task label (e.g., 'rest', 'movie').
+    ses : str or None
+        Session label (e.g., '01'), if applicable.
+    run : str or int or None
+        Run label (e.g., '01'), if applicable.
+
+    Returns
+    -------
+    float
+        Mean framewise displacement for the specified file.
+    """
+    if len(fmriprep_dir)==0: fmriprep_dir = FMRIPREP_DIR
+    subj = subject if subject.startswith('sub-') else f'sub-pixar{subject}'
+    pattern = os.path.join(
+        fmriprep_dir, subj , 'func',
+        f"{subj}_*task-{task}*confounds.tsv"
+    )
+    files = glob.glob(pattern)
+    if not files:
+        raise FileNotFoundError(f"No confounds file found for pattern: {pattern}")
+    confounds = pd.read_csv(files[0], sep='\t')
+    if 'framewise_displacement' not in confounds.columns:
+        raise ValueError("framewise_displacement column not found in confounds file.")
+    return confounds['framewise_displacement'].astype(float).mean()
 
 def get_groups():
     return PC_AGE_GROUPS
@@ -154,7 +190,7 @@ def get_metric_atlas_nii_subject(subject, task, metric, file_idx=0, filter_by_ag
     dirname = get_scratch_dir()
     task = task.lower()
     if metric == 'ISC':
-        dirname = f'{dirname}/ISC/LOSO_parcel/results'
+        dirname = f'{dirname}/ISC/LOSO_parcel/results/results_all'
         filestr = ''
     else:# metric in METHOD_NAMES:
         dirname = f'{dirname}/IDE/LOSO_parcel/results'
@@ -164,3 +200,14 @@ def get_metric_atlas_nii_subject(subject, task, metric, file_idx=0, filter_by_ag
     except:
         f = sorted(glob.glob(f'{dirname}/{subject}_{task.lower()}*_{metric}.nii.gz'))[0]
     return nib.load(f)
+
+def get_metric_atlas_df_subject(subject, task, metric, file_idx=0, filter_by_age=0, slrad=5):
+    dirname = get_scratch_dir()
+    task = task.lower()
+    if metric == 'ISC':
+        dirname = f'{dirname}/ISC/LOSO_parcel/results/results_all'
+        f = sorted(glob.glob(f'{dirname}/{subject}_{task.lower()}*_all_ISC_results.csv'))[0]
+    else:# metric in METHOD_NAMES:
+        dirname = f'{dirname}/IDE/LOSO_parcel/results/'
+        f = sorted(glob.glob(f'{dirname}/{subject}_{task.lower()}*_all_IDE_results.csv'))[0]
+    return pd.read_csv(f,index_col=0)

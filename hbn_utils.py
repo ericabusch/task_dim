@@ -17,16 +17,19 @@ def determine_intersecting_subjects(subject_filter='all'):
     # '''
     # right now includes 614 subjects with all three tasks complete
     # '''
-    # includes 393 subjects fuly preproc as of 6/7
-    with open(f'{HBN_OUTDIR}/subject_list_0607.txt','r') as f:
-        lines=f.readlines()
-    lines=[l.strip() for l in lines]
-    print(lines[:10])
-    if subject_filter=='all' or subject_filter == '0': 
-        return sorted(list(lines))
+    # # includes 404 subjects fuly preproc as of 6/30
+    # with open(f'{HBN_OUTDIR}/participants_.txt','r') as f:
+    #     lines=f.readlines()
+    # lines=[l.strip() for l in lines]
+    # print(lines[:10])
+    # if subject_filter=='all' or subject_filter == '0': 
+    #     return sorted(list(lines))
     par_df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}')
-    par_df = par_df[par_df['subject_id'].isin(lines)]
-    participants = par_df[par_df['AgeGroup1']==subject_filter]['subject_id'].values
+    par_df = par_df[par_df['movie_rest_cleaned']==True]
+    par_df = par_df[par_df['FD_below_0.5']==True]
+    if subject_filter=='all' or subject_filter == '0': 
+        return sorted(par_df['subject_id'].values)
+    participants = sorted(par_df[par_df['AgeGroup1']==subject_filter]['subject_id'].values)
     return participants
 
 def get_groups():
@@ -67,10 +70,10 @@ def get_subject_group(subject_id):
     return age_group
 
 def get_intersecting_subjects(subject_filter='all'):
-    if subject_filter == 'all' or subject_filter == '0':
-        par_df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}')
-        par_df = par_df[par_df['confirmed_3_tasks']]
-        return par_df['subject_id'].values
+    # if subject_filter == 'all' or subject_filter == '0':
+    #     par_df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}')
+    #     par_df = par_df[par_df['confirmed_3_tasks']]
+    #     return par_df['subject_id'].values
     return determine_intersecting_subjects(subject_filter)
 
 def get_tasks():
@@ -158,6 +161,42 @@ def get_brain_cmap(mpl_colorname='inferno'):
         brain_cmap = matplotlib.colors.ListedColormap(colors_combined)
     return brain_cmap
 
+def fmriprep_confounds_mean_fd(subject, task, fmriprep_dir=''):
+    """
+    Load confounds file from fmriprep output and compute mean framewise displacement.
+
+    Parameters
+    ----------
+    bids_dir : str
+        Path to the BIDS derivatives/fmriprep directory.
+    subject : str
+        Subject label (e.g., '01' or 'sub-01').
+    task : str
+        Task label (e.g., 'rest', 'movie').
+    ses : str or None
+        Session label (e.g., '01'), if applicable.
+    run : str or int or None
+        Run label (e.g., '01'), if applicable.
+
+    Returns
+    -------
+    float
+        Mean framewise displacement for the specified file.
+    """
+    if len(fmriprep_dir)==0: fmriprep_dir = MY_PREPROC_HBN
+    subj = subject if subject.startswith('sub-') else f'sub-{subject}'
+    pattern = os.path.join(
+        fmriprep_dir, subj , 'ses*', 'func',
+        f"{subj}_*task-{task}*desc-confounds_timeseries.tsv"
+    )
+    files = glob.glob(pattern)
+    if not files:
+        raise FileNotFoundError(f"No confounds file found for pattern: {pattern}")
+    confounds = pd.read_csv(files[0], sep='\t')
+    if 'framewise_displacement' not in confounds.columns:
+        raise ValueError("framewise_displacement column not found in confounds file.")
+    return confounds['framewise_displacement'].astype(float).mean()
+
 
 def get_subject_fmriprep_output_files(sub_id, task):
     print(f'{MY_PREPROC_HBN}/{sub_id}')
@@ -198,3 +237,14 @@ def get_metric_atlas_nii_subject(subject, task, metric, file_idx=0, filter_by_ag
     except:
         f = sorted(glob.glob(f'{dirname}/{subject}_{task}*_{filestr}{metric}.nii.gz'))[0]
     return nib.load(f)
+
+def get_metric_atlas_df_subject(subject, task, metric, file_idx=0, filter_by_age=0, slrad=5):
+    dirname = get_scratch_dir()
+    if metric == 'ISC':
+        dirname = f'{dirname}/ISC/LOSO_parcel/results/results_all'
+        f = sorted(glob.glob(f'{dirname}/{subject}_{task}*_all_ISC_results.csv'))[0]
+        return pd.read_csv(f,index_col=0)
+    dirname = f'{dirname}/IDE/LOSO_parcel/results'
+    f = sorted(glob.glob(f'{dirname}/{subject}_{task}*_all_IDE_results.csv'))[0]
+    df = pd.read_csv(f, index_col=0)
+    return df[df['ide_method']==metric].reset_index(drop=True)

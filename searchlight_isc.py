@@ -214,7 +214,7 @@ if __name__ == '__main__':
         new_output = output_name.replace('.nii.gz','vectorized.npy')
         np.save(new_output, result_vec)
         if p.verbose: print(f'result vec of shape: {result_vec.shape}; saving to {new_output}')
-        N = 2
+        N = 3
         result_vec = [N*[0] if not n else n for n in result_vec] # replace all None
         for i, nm in zip(np.arange(N), ['correlation', 'p', 'zstat']):
             new_output = output_name.replace('.nii.gz',f'_{nm}.nii.gz')

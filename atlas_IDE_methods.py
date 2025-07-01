@@ -121,7 +121,7 @@ if __name__ == '__main__':
     parser.add_argument('-s','--subject_filter', type=str, default='0')
     parser.add_argument('-a', '--atlas',type=str,default='Schaefer')
     parser.add_argument('-v','--verbose', type=int, default=1)
-    parser.add_argument('-o', '--overwrite', type=int, default=1)
+    parser.add_argument('-o', '--overwrite', type=int, default=0)
     parser.add_argument('-p', '--plot', type=int, default=1)
     p = parser.parse_args()
 
@@ -146,7 +146,7 @@ if __name__ == '__main__':
 
      # load target subject
     ALL_SUBJECTS = utils.get_intersecting_subjects(subject_filter=p.subject_filter)
-    
+    print(f'loaded a total of {len(ALL_SUBJECTS)} subjects')
     
     # make sure the desired subject exists
     if len(ALL_SUBJECTS) < p.subject_idx:
@@ -167,8 +167,14 @@ if __name__ == '__main__':
     outfn_base = os.path.join(results_outdir, f'{this_subject}_{p.task}_{p.atlas}')
     if p.dataset.lower() in ['cneuromod','infant_restmovie']:
         outfn_base+=f'_file_idx_{p.file_idx}'
-
+    
+    if os.path.exists(outfn_base+'_all_IDE_results.csv') and p.overwrite == 0:
+        print(f'already ran {outfn_base}; not rerunning')
+        sys.exit(0)
+        
     if p.verbose: print(f'Will save to {outfn_base}')
+    
+    
     results_df, results_volumes = run_subject_ide(this_subject, p.task, p.file_idx, atlas_name=p.atlas)
     results_df.to_csv(outfn_base+'_all_IDE_results.csv')
     cmap=utils.get_brain_cmap()
