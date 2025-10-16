@@ -161,7 +161,7 @@ if __name__ == '__main__':
     parser.add_argument('-d','--dataset',type=str)
     parser.add_argument('-t','--task', type=str)
     parser.add_argument('-s', '--subject_id', type=str)
-    parser.add_argument('-r','--rerun',default=0,type=int)
+    parser.add_argument('-r','--rerun',default=1,type=int)
     p = parser.parse_args()
     width = 6
     

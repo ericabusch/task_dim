@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --output log/%A_%3a.out
-#SBATCH --array 0-29
+#SBATCH --array 0-12
 #SBATCH --job-name adult_restmovie_aggregate_all_tasks
 #SBATCH --mail-type all
 

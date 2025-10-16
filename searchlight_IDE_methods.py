@@ -75,10 +75,10 @@ def IDE_kernel(data, sl_mask, myrad, bcvar):
         return np.nan, np.nan
     
     # check if there are enough voxels active
-    if check_empty_features(data_arr, min_active_proportion):
-        print('not enough active voxels')
-        R = [np.nan]*len(METHODS_HERE)
-        return R
+    # if check_empty_features(data_arr, min_active_proportion):
+    #     print('not enough active voxels')
+    #     R = [np.nan]*len(METHODS_HERE)
+    #     return R
         
     data_arr = remove_missing(data_arr)
     
@@ -171,7 +171,7 @@ if __name__ == '__main__':
         wb_mask = wb_mask.get_fdata()
 
     # set up searchlight
-    sl = Searchlight(sl_rad=p.sl_rad, max_blk_edge=max_blk_edge, min_active_voxels_proportion=min_active_proportion)
+    sl = Searchlight(sl_rad=p.sl_rad, max_blk_edge=max_blk_edge)
     sl.distribute(data, wb_mask)
     sl.broadcast(bcvar)
     

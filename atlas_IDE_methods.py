@@ -122,7 +122,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--atlas',type=str,default='Schaefer')
     parser.add_argument('-v','--verbose', type=int, default=1)
     parser.add_argument('-o', '--overwrite', type=int, default=0)
-    parser.add_argument('-p', '--plot', type=int, default=1)
+    parser.add_argument('-p', '--plot', type=int, default=0)
     p = parser.parse_args()
 
     # import the right utils/config file

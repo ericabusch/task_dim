@@ -129,5 +129,17 @@ def get_metric_atlas_nii_subject(subject, task, metric, file_idx=0, filter_by_ag
     try:
         f = sorted(glob.glob(f'{dirname}/{subject}_{task.capitalize()}*_{metric}.nii.gz'))[0]
     except:
+        print(f'{dirname}/{subject}_{task.lower()}*_{metric}.nii.gz')
         f = sorted(glob.glob(f'{dirname}/{subject}_{task.lower()}*_{metric}.nii.gz'))[0]
     return nib.load(f)
+
+def get_metric_atlas_df_subject(subject, task, metric, file_idx=0, filter_by_age=0, slrad=5):
+    dirname = get_scratch_dir()
+    task = task.lower()
+    if metric == 'ISC':
+        dirname = f'{dirname}/ISC/LOSO_parcel/results/results_all'
+        f = sorted(glob.glob(f'{dirname}/{subject}_{task.lower()}*_all_ISC_results.csv'))[0]
+    else:# metric in METHOD_NAMES:
+        dirname = f'{dirname}/IDE/LOSO_parcel/results/'
+        f = sorted(glob.glob(f'{dirname}/{subject}_{task.lower()}*_all_IDE_results.csv'))[0]
+    return pd.read_csv(f,index_col=0)

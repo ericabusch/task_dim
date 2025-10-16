@@ -12,7 +12,7 @@ TR = 1.450
 KNN=10
 THRESHOLD=0.9
 TRIM=-1
-IDE_METHODS = ['TPHATE_DiffOp_IDE','PHATE_DiffOp_IDE', 'MiND_ML','PCA','MLE','lPCA']
+IDE_METHODS = ['TPHATE_DiffOp_IDE','PCA']
 # my dataset
 MY_PREPROC_HBN='/gpfs/milgram/project/casey/elb77/HBN_Prep'
 BASE_DIR_HBN = f'//gpfs/milgram/project/turk-browne/projects/HealthyBrainNetwork/'

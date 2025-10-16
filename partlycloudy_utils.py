@@ -62,9 +62,14 @@ def fmriprep_confounds_mean_fd(subject, task, fmriprep_dir=''):
     if not files:
         raise FileNotFoundError(f"No confounds file found for pattern: {pattern}")
     confounds = pd.read_csv(files[0], sep='\t')
-    if 'framewise_displacement' not in confounds.columns:
-        raise ValueError("framewise_displacement column not found in confounds file.")
-    return confounds['framewise_displacement'].astype(float).mean()
+    if 'FramewiseDisplacement' in confounds.columns:
+        header = 'FramewiseDisplacement'
+    elif 'framewise_displacement' in confounds.columns:
+        header = 'framewise_displacement'
+    else:
+        raise ValueError(f"framewise_displacement column not found in confounds file, {subject}, {task}.")
+    
+    return confounds[header].astype(float).mean()
 
 def get_groups():
     return PC_AGE_GROUPS

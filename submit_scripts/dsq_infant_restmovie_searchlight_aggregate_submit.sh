@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --output log/%A_%3a.out
-#SBATCH --array 0-23
+#SBATCH --array 0-20
 #SBATCH --job-name infant_restmovie_aggregate_all_tasks
 #SBATCH --mail-type all
 

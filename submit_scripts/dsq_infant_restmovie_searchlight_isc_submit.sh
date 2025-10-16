@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --output log/%A_%3a.out
-#SBATCH --array 1-53
+#SBATCH --array 0-53
 #SBATCH --job-name infant_restmovie_isc_all_tasks
 #SBATCH -p psych_day,psych_week
 #SBATCH -t 24:00:00

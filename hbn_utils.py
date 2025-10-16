@@ -25,8 +25,7 @@ def determine_intersecting_subjects(subject_filter='all'):
     # if subject_filter=='all' or subject_filter == '0': 
     #     return sorted(list(lines))
     par_df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}')
-    par_df = par_df[par_df['movie_rest_cleaned']==True]
-    par_df = par_df[par_df['FD_below_0.5']==True]
+    par_df = par_df[(par_df['include_both_tasks']==1)]
     if subject_filter=='all' or subject_filter == '0': 
         return sorted(par_df['subject_id'].values)
     participants = sorted(par_df[par_df['AgeGroup1']==subject_filter]['subject_id'].values)

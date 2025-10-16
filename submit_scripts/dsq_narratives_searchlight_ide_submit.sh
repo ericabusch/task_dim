@@ -1,7 +1,12 @@
 #!/bin/bash
-#SBATCH --output dsq-narratives_searchlight_ide_joblist-%A_%3a-%N.out
+#SBATCH --output log/%A_%2a-%N.out
 #SBATCH --array 0-159
-#SBATCH --job-name narratives_ide_all_tasks
+#SBATCH --job-name narratives_ide_searchlight
+#SBATCH -p psych_day
+#SBATCH -t 24:00:00
+#SBATCH --mem-per-cpu 10G        
+#SBATCH -n 6  
+#SBATCH --mail-type=all
 
 # Set up the environment
 module load miniconda
