@@ -2,8 +2,8 @@ from random import choices, choice
 import numpy as np
 from sklearn.utils import check_random_state
 from joblib import Parallel, delayed
-from scipy.stats import pearsonr, spearmanr, kendalltau
-
+from scipy.stats import pearsonr, spearmanr, kendalltau, ttest_rel, ttest_1samp
+from statsmodels.stats.multitest import multipletests
 
 def permutation_test(data, n_iterations, alternative='greater'):
     """
@@ -170,6 +170,158 @@ def calc_pval_zstat(null_stats, true_stat, tail='two-tailed'):
     return z, p
     
 
+
+def paired_difference_ttest(arr1, arr2, alpha=0.05, alternative='greater'):
+    """
+    Compute within-sample differences, test if difference > 0 using related samples t-test,
+    and apply FDR correction.
+
+    Parameters
+    ----------
+    arr1, arr2 : np.ndarray, shape (N, M)
+        Paired data arrays (N samples, M features).
+    alpha : float
+        FDR threshold for significance.
+
+    Returns
+    -------
+    mean_diff : np.ndarray, shape (M,)
+        Mean difference (arr1 - arr2) for each feature.
+    pvals : np.ndarray, shape (M,)
+        P-values from Wilcoxon signed-rank test for each feature.
+    sig_mask : np.ndarray, shape (M,)
+        Boolean array, True if FDR-corrected p < alpha.
+    """
+    if arr2 is None:
+        #assume arr2 is a zero array of the same shape as arr1
+        arr2 = np.zeros_like(arr1)
+    arr1 = np.asarray(arr1)
+    arr2 = np.asarray(arr2)
+    assert arr1.shape == arr2.shape, "Arrays must have the same shape"
+    N, M = arr1.shape
+
+    mean_diff = np.mean(arr1 - arr2, axis=0)
+    pvals = np.zeros(M)
+    for i in range(M):
+        stat, p = ttest_rel(arr1[:, i], arr2[:, i], alternative=alternative)
+        pvals[i] = p
+
+    # FDR correction
+    reject, pvals_corr, _, _ = multipletests(pvals, alpha=alpha, method='fdr_bh')
+    sig_mask = reject
+
+    return mean_diff, pvals, sig_mask
+
+
+def paired_difference_null_distribution(arr1, arr2, alpha=0.05, n_perm=1000, random_state=None,alternative='greater'):
+    """
+    Compute within-sample differences, test if difference > 0 using a permutation test,
+    and apply Benjamini-Hochberg FDR correction.
+
+    Parameters
+    ----------
+    arr1, arr2 : np.ndarray, shape (N, M)
+        Paired data arrays (N samples, M features).
+    alpha : float
+        FDR threshold for significance.
+    n_perm : int
+        Number of permutations.
+    random_state : int or None
+        Seed for reproducibility.
+
+    Returns
+    -------
+    mean_diff : np.ndarray, shape (M,)
+        Mean difference (arr1 - arr2) for each feature.
+    pvals : np.ndarray, shape (M,)
+        P-values from permutation test for each feature.
+    sig_mask : np.ndarray, shape (M,)
+        Boolean array, True if FDR-corrected p < alpha.
+    """
+    rng = np.random.default_rng(random_state)
+    arr1 = np.asarray(arr1)
+    arr2 = np.asarray(arr2)
+    assert arr1.shape == arr2.shape, "Arrays must have the same shape"
+    N, M = arr1.shape
+
+    diffs = arr1 - arr2
+    mean_diff = np.mean(diffs, axis=0)
+    pvals = np.zeros(M)
+
+    for i in range(M):
+        observed = mean_diff[i]
+        # Permutation: randomly flip sign of each paired difference
+        perm_diffs = np.empty(n_perm)
+        for p in range(n_perm):
+            signs = rng.choice([1, -1], size=N)
+            perm_diffs[p] = np.mean(diffs[:, i] * signs)
+        if alternative == 'greater':
+            pvals[i] = (np.sum(perm_diffs >= observed) + 1) / (n_perm + 1)
+        elif alternative == 'less':
+            pvals[i] = (np.sum(perm_diffs <= observed) + 1) / (n_perm + 1)
+        elif alternative == 'two-sided':
+            pvals[i] = (np.sum(np.abs(perm_diffs) >= np.abs(observed)) + 1) / (n_perm + 1)
+        else:
+            raise ValueError("alternative must be 'greater', 'less', or 'two-sided'")
+
+    reject, pvals_corr, _, _ = multipletests(pvals, alpha=alpha, method='fdr_bh')
+    sig_mask = reject
+
+    return mean_diff, pvals, sig_mask
+
+def paired_difference_resampling_distribution(arr1, arr2, alpha=0.05, n_perm=1000, random_state=None, alternative='greater'):
+    """
+    Compute within-sample differences, test if difference > 0 using a resampling test,
+    and apply Benjamini-Hochberg FDR correction.
+
+    Parameters
+    ----------
+    arr1, arr2 : np.ndarray, shape (N, M)
+        Paired data arrays (N samples, M features).
+    alpha : float
+        FDR threshold for significance.
+    n_perm : int
+        Number of permutations.
+    random_state : int or None
+        Seed for reproducibility.
+
+    Returns
+    -------
+    mean_diff : np.ndarray, shape (M,)
+        Mean difference (arr1 - arr2) for each feature.
+    pvals : np.ndarray, shape (M,)
+        P-values from resampling test for each feature.
+    sig_mask : np.ndarray, shape (M,)
+        Boolean array, True if FDR-corrected p < alpha.
+    """
+    rng = np.random.default_rng(random_state)
+    arr1 = np.asarray(arr1)
+    arr2 = np.asarray(arr2)
+    assert arr1.shape == arr2.shape, "Arrays must have the same shape"
+    N, M = arr1.shape
+
+    diffs = arr1 - arr2
+    mean_diff = np.mean(diffs, axis=0)
+    pvals = np.zeros(M)
+
+    for i in range(M):
+        observed = mean_diff[i]
+        # Resampling: randomly sample with replacement from the differences
+        perm_diffs = np.empty(n_perm)
+        for p in range(n_perm):
+            sampled_diffs = rng.choice(diffs[:, i], size=N, replace=True)
+            perm_diffs[p] = np.mean(sampled_diffs)
+        if alternative == 'greater':
+            pvals[i] = (np.sum(perm_diffs >= observed) + 1) / (n_perm + 1)
+        elif alternative == 'less':
+            pvals[i] = (np.sum(perm_diffs <= observed) + 1) / (n_perm + 1)
+        elif alternative == 'two-sided':
+            pvals[i] = (np.sum(np.abs(perm_diffs) >= np.abs(observed)) + 1) / (n_perm + 1)
+        else:
+            raise ValueError("alternative must be 'greater', 'less', or 'two-sided'")
+
+    reject, pvals_corr, _, _ = multipletests(pvals, alpha=alpha, method='fdr_bh')
+    sig_mask = reject
 
 def false_discovery_control(ps, *, axis=0, method='bh'):
     """Adjust p-values to control the false discovery rate.

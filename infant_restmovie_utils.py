@@ -26,6 +26,17 @@ def determine_intersecting_subjects(basedir=None, task_list=[]):
     intersection = intersecting_items(subjects_by_task)
     return sorted(intersection)
 
+def create_task_intersect_mask(task0, task1):
+    '''
+    Creates a mask that is the intersection of task0 and task1
+    '''
+    mask0=get_intersect_mask(task0)
+    mask1=get_intersect_mask(task1)
+    sum_mask = math_img('np.where(np.add(X0,X1)==2,1,0)', X0=mask0, X1=mask1)
+    mask_img = nib.Nifti1Image(sum_mask.get_fdata(), mask0.affine)
+    mask_img.header = mask0.header.copy()
+    return mask_img
+
 def load_ide_isc_atlas_df():
     df = pd.read_csv(f'{get_results_dir()}/parcelwise_results_ISC_IDE.csv',index_col=0)
     return df
