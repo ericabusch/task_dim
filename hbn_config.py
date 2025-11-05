@@ -6,8 +6,15 @@ import pandas as pd
 
 NJOBS=16
 VERBOSE=True
-ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
-SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
+
+# check if running on milgram or misha
+if 'milgram' in os.uname()[1]:
+    ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
+    SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
+else:
+    ROOT = '/gpfs/radev/home/elb77/project/task_dim'
+    SCRATCH_DIR = f'/gpfs/radev/scratch60/turk-browne/elb77/task_dim_sandbox'
+
 TR = 1.450
 KNN=10
 THRESHOLD=0.9
@@ -24,7 +31,7 @@ HBN_RESULTS_DIR = f'{HBN_OUTDIR}/results'
 HBN_TASKS = ['rest','movieTP']# 'movieDM', 
 HBN_PARTICIPANT_INFO = f'{HBN_OUTDIR}/study-HBN_desc-participants.tsv'
 AGE_BINS = [8,9,10,11,12,13,14,15,16,17,22]
-BASIC_PARTICIPANT_DF =  f'{HBN_OUTDIR}/basic_cohort_info.csv'
-HBN_PARTICIPANTS_ALL = pd.read_csv(BASIC_PARTICIPANT_DF).subject_id.values
+BASIC_PARTICIPANT_DF =  f'{HBN_OUTDIR}/participants.csv'
+#HBN_PARTICIPANTS_ALL = pd.read_csv(BASIC_PARTICIPANT_DF).subject_id.values
 HBN_PARTICIPANT_FMRIPREP = f'{HBN_OUTDIR}/fmriprep_participants.txt'
 HBN_AGE_GROUPS=['U_08','U_09','U_10','U_11','U_12','U_13','U_14','U_15','U_16','U_17','U_22']

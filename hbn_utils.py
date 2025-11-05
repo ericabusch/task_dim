@@ -160,6 +160,43 @@ def get_brain_cmap(mpl_colorname='inferno'):
         brain_cmap = matplotlib.colors.ListedColormap(colors_combined)
     return brain_cmap
 
+def fmriprep_confounds_threshold_fd(subject, task, fmriprep_dir='', threshold=3.0):
+    """
+    Load confounds file from fmriprep output and computes the % of timepoints exceeding a framewise displacement threshold.
+
+    Parameters
+    ----------
+    bids_dir : str
+        Path to the BIDS derivatives/fmriprep directory.
+    subject : str
+        Subject label (e.g., '01' or 'sub-01').
+    task : str
+        Task label (e.g., 'rest', 'movie').
+    ses : str or None
+        Session label (e.g., '01'), if applicable.
+    run : str or int or None
+        Run label (e.g., '01'), if applicable.
+
+    Returns
+    -------
+    float
+        Mean framewise displacement for the specified file.
+    """
+    if len(fmriprep_dir)==0: fmriprep_dir = MY_PREPROC_HBN
+    subj = subject if subject.startswith('sub-') else f'sub-{subject}'
+    pattern = os.path.join(
+        fmriprep_dir, subj , 'ses*', 'func',
+        f"{subj}_*task-{task}*desc-confounds_timeseries.tsv"
+    )
+    files = glob.glob(pattern)
+    if not files:
+        raise FileNotFoundError(f"No confounds file found for pattern: {pattern}")
+    confounds = pd.read_csv(files[0], sep='\t')
+    if 'framewise_displacement' not in confounds.columns:
+        raise ValueError("framewise_displacement column not found in confounds file.")
+    num_exceeding = (confounds['framewise_displacement'].astype(float) > threshold).sum()
+    return num_exceeding / len(confounds) 
+
 def fmriprep_confounds_mean_fd(subject, task, fmriprep_dir=''):
     """
     Load confounds file from fmriprep output and compute mean framewise displacement.

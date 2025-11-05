@@ -79,7 +79,7 @@ def get_paired_palette():
 def sigmoid(x):
 	return 1 / (1 + np.exp(-x))
 
-def create_depth_map(surf_type='fsaverage', target_density='41k'):
+def create_depth_map(surf_type='fsaverage', target_density='41k',include_cbar=False):
 	'''
 	Creates a depth map for the given surface type and density
 	surf_type in ['fsaverage', 'fslr', 'civet']
@@ -107,7 +107,7 @@ def create_depth_map(surf_type='fsaverage', target_density='41k'):
 	right = sigmoid(nib.load(surfaces['sulc'][1]).agg_data())
 	
 	depth = make_layers_dict(data={'left': left, 'right': right},
-		cmap=cmap, alpha=1, color_range=(0, 1), cbar=False)
+		cmap=cmap, alpha=1, color_range=(0, 1), cbar=include_cbar)
 
 	return depth
 
@@ -134,7 +134,7 @@ def apply_surface_mask(data_surface, mask_surface):
 	masked_data = {'left':surf_lh, 'right':surf_rh}
 	return masked_data
 
-def vol_to_surf(ds, surf_type='fsaverage', map_type='inflated', target_density='41k', method='linear'):
+def vol_to_surf(ds, surf_type='fsaverage', map_type='inflated', target_density='41k', method='nearest'):
 	'''
 	Takes a volumetric image and makes a gifti surface ready
 	for plotting
@@ -168,7 +168,7 @@ def vol_to_surf(ds, surf_type='fsaverage', map_type='inflated', target_density='
 	medial_mask = {'left':nib.load(surfaces['medial'][0]), 'right':nib.load(surfaces['medial'][1])}
 	return surfs, data, medial_mask
 
-def numpy_to_surf(ds, surf_type='fsaverage', map_type='inflated', target_density='41k', method='linear'):
+def numpy_to_surf(ds, surf_type='fsaverage', map_type='inflated', target_density='41k', method='nearest'):
 	'''
 	Takes a numpy array surface and makes a gifti surface ready
 	for plotting 
@@ -345,10 +345,12 @@ def expand_parcellation_to_volume(values, atlas_img):
     out_vol[:] = 1000  # Set background to nan
     for region in range(1, len(values)+1):
         out_vol[atlas_data == region] = values[region-1]
+	# Figure out how many voxels are nan
+    print(f'number of nan voxels: {(out_vol == 1000).sum()} out of {out_vol.size} total voxels')
     out_vol[atlas_data == 0] = np.nan
     return nib.Nifti1Image(out_vol, atlas_img.affine, atlas_img.header)
 
-def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type='fsaverage', target_density='41k',include_cbar=False, title=None,method='linear', threshold=None, mask_medial_wall=True):
+def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type='fslr', target_density='32k', include_cbar=False, title=None,method='nearest', threshold=None, mask_medial_wall=True):
 	"""
 	Generate and save surface plots from data arrays.
 	"""
@@ -392,6 +394,8 @@ def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type=
 		surfs, [layer], surf_type=surf_type, colorbar=include_cbar, title=title, out_fn=image_fn 
 	)
 	print("Generated surface plot:", image_fn)
+	if image_fn is not None:
+		plt.close('all')
 	return image_fn, vol_img
 
 def compile_surface_plots_to_grid_from_niftis(
@@ -485,7 +489,7 @@ def get_global_value_range(data_files):
     return (global_min, global_max)
 
 def compile_surface_plots_to_grid(image_files, data_files, output_path, atlas='Schaefer', 
-								  surf_type='fsaverage', method='linear', target_density='41k',rerun=False, 
+								  surf_type='fslr', method='linear', target_density='32k',rerun=False, 
 								  titles=None, main_title=None, cmap='viridis', cbar_range=(0, 1),cbar_label='',threshold=None,mask=True):
 	"""
 	Compile surface plots into a grid, generating them if needed.
@@ -570,3 +574,180 @@ def compile_surface_plots_to_grid(image_files, data_files, output_path, atlas='S
 	plt.savefig(output_path, bbox_inches='tight', dpi=300)
 	print(f"Compiled surface plots into grid: {output_path}")
 	plt.close(fig)
+
+def compile_surface_plots_to_grid_by_rows(
+	image_files,
+	data_files,
+	output_path,
+	n_rows=1,
+	atlas='Schaefer',
+	surf_type='fslr',
+	method='linear',
+	target_density='32k',
+	rerun=False,
+	titles=None,
+	main_title=None,
+	cmaps_per_row=('viridis',),
+	cbar_ranges_per_row=None,
+	cbar_labels_per_row=None,
+	threshold=None,
+	mask=True,
+):
+	"""
+	Compile surface plots into a grid with a fixed number of rows and support per-row colormaps and colorbars.
+
+	Differences vs compile_surface_plots_to_grid:
+	- n_rows: number of rows in the output grid. n_cols is computed as ceil(n_images / n_rows).
+	- cmaps_per_row: iterable of colormap names (or single name) of length n_rows (or 1 to broadcast).
+	- cbar_ranges_per_row: iterable of (vmin, vmax) tuples for each row (or single tuple to broadcast).
+	- cbar_labels_per_row: iterable of labels for each row colorbar (or single string to broadcast).
+
+	Notes:
+	- If rerun is True, data_files are used to (re)generate images and image_files will be overwritten.
+	- This function requires that len(image_files) == len(data_files).
+	"""
+	assert atlas in ['Schaefer', 'searchlight'], "Invalid atlas type. Choose 'Schaefer' or 'searchlight'."
+	if len(image_files) != len(data_files):
+		raise ValueError("image_files and data_files must have the same length.")
+
+	# Determine number of images (use data_files when rerunning, else require all image files exist)
+	if rerun:
+		n_imgs = len(data_files)
+		print(f'Rerunning surface plot generation for {n_imgs} images.')
+	else:
+		missing = [f for f in image_files if not os.path.exists(f)]
+		if len(missing) > 0:
+			raise FileNotFoundError(f"Some image files are missing and rerun is False: {missing}")
+		n_imgs = len(image_files)
+
+	# Compute grid shape
+	n_rows = max(1, int(n_rows))
+	n_cols = math.ceil(n_imgs / n_rows)
+
+	# Normalize per-row inputs (broadcast if single provided)
+	def _broadcast_param(param, name):
+		if param is None:
+			return [None] * n_rows
+		if isinstance(param, (list, tuple)):
+			if len(param) == 1:
+				return list(param) * n_rows
+			if len(param) != n_rows:
+				raise ValueError(f"{name} must have length 1 or n_rows ({n_rows}).")
+			return list(param)
+		else:
+			return [param] * n_rows
+
+	cmaps_per_row = _broadcast_param(cmaps_per_row, "cmaps_per_row")
+	if cbar_ranges_per_row is None:
+		# Default: try to determine a global range; fallback to (0,1)
+		if rerun:
+			# if rerun, compute global range from data_files (supports .npy and nifti)
+			try:
+				cbar_ranges_per_row = [get_global_value_range(data_files)] * n_rows
+			except Exception:
+				cbar_ranges_per_row = [(0, 1)] * n_rows
+		else:
+			cbar_ranges_per_row = [(0, 1)] * n_rows
+	cbar_ranges_per_row = _broadcast_param(cbar_ranges_per_row, "cbar_ranges_per_row")
+	cbar_labels_per_row = _broadcast_param(cbar_labels_per_row if cbar_labels_per_row is not None else '', "cbar_labels_per_row")
+
+	# If rerun: generate images with appropriate row colormap / cbar_range
+	images_to_visualize = []
+	if rerun:
+		for i in range(n_imgs):
+			row_idx = min(n_rows - 1, i // n_cols)  # assign image to row based on index
+			cmap_row = cmaps_per_row[row_idx]
+			cbar_range_row = cbar_ranges_per_row[row_idx]
+			out_image = image_files[i]
+			fn, _ = generate_surface_plot(
+				data_files[i],
+				out_image,
+				atlas,
+				cmap_row,
+				cbar_range_row,
+				surf_type=surf_type,
+				target_density=target_density,
+				method=method,
+				include_cbar=False,
+				threshold=threshold,
+				mask_medial_wall=mask,
+			)
+			images_to_visualize.append(fn)
+	else:
+		# All image files must exist (checked above)
+		images_to_visualize = list(image_files)
+
+	# Load images
+	images = _load_images(images_to_visualize)
+	if len(images) == 0:
+		raise ValueError("No images to visualize after processing.")
+	# Ensure we have exactly n_imgs loaded
+	n_imgs = len(images)
+	# Recompute n_cols in case n_imgs changed
+	n_cols = math.ceil(n_imgs / n_rows)
+
+	# Create subplots
+	fig_w, fig_h = images[0].width / 100.0, images[0].height / 100.0
+	fig, axes = plt.subplots(n_rows, n_cols, figsize=(fig_w * n_cols, fig_h * n_rows + 1))
+	# Normalize axes to a flat list for iteration
+	if n_rows * n_cols == 1:
+		axes_list = [axes]
+	else:
+		axes_list = axes.flatten().tolist()
+
+	# Plot images
+	for idx, ax in enumerate(axes_list[:n_imgs]):
+		img = images[idx]
+		ax.imshow(img)
+		ax.axis('off')
+		if titles and idx < len(titles):
+			ax.set_title(titles[idx], fontsize=32, pad=8)
+
+	# Hide remaining axes
+	for ax in axes_list[n_imgs:]:
+		ax.axis('off')
+
+	if main_title:
+		plt.suptitle(main_title, fontsize=40, y=0.98)
+
+	# Add one colorbar per row. Determine the vertical span of axes in each row.
+	for row_idx in range(n_rows):
+		# collect axes for this row (some may be missing if fewer images)
+		start = row_idx * n_cols
+		end = min(start + n_cols, n_imgs)
+		if start >= n_imgs:
+			continue  # empty row
+		row_axes = [axes_list[i] for i in range(start, end)]
+		# Determine bottom and top in figure coordinates
+		bottoms = [ax.get_position().y0 for ax in row_axes]
+		tops = [ax.get_position().y1 for ax in row_axes]
+		bottoms_valid = bottoms if len(bottoms) > 0 else [0.1]
+		tops_valid = tops if len(tops) > 0 else [0.9]
+		bottom = min(bottoms_valid)
+		top = max(tops_valid)
+		height = top - bottom
+		# place colorbar slightly to the right of the rightmost axis in the row
+		right_positions = [ax.get_position().x1 for ax in row_axes]
+		rightmost = max(right_positions)
+		cbar_x = rightmost + 0.01
+		cbar_width = 0.02
+
+		cmap_row = cmaps_per_row[row_idx]
+		cbar_range_row = cbar_ranges_per_row[row_idx]
+		cbar_label_row = cbar_labels_per_row[row_idx] if cbar_labels_per_row[row_idx] else ''
+
+		norm = plt.Normalize(vmin=cbar_range_row[0], vmax=cbar_range_row[1])
+		sm = plt.cm.ScalarMappable(cmap=plt.get_cmap(cmap_row), norm=norm)
+		sm.set_array([])
+
+		# Add axes in figure coords
+		cax = fig.add_axes([cbar_x, bottom, cbar_width, height])
+		cbar = plt.colorbar(sm, cax=cax, orientation='vertical')
+		cbar.set_label(cbar_label_row, fontsize=24)
+		cbar.ax.tick_params(labelsize=20)
+
+	plt.subplots_adjust(left=0.03, right=0.92, top=0.92, bottom=0.05, wspace=0.05, hspace=0.05)
+	plt.savefig(output_path, bbox_inches='tight', dpi=300)
+	print(f"Compiled surface plots into grid (by rows): {output_path}")
+	plt.close(fig)
+	return output_path
