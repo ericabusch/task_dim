@@ -49,7 +49,7 @@ def diverging_colormap_bp():
     colormap = LinearSegmentedColormap.from_list("custom_diverging_hex", colors)
     return colormap
 
-def diverging_colormap_gp():
+def diverging_colormap_bp():
     """
     Create a continuous diverging colormap using hex codes:
     dark blue -> turquoise -> white -> pink -> red
@@ -464,7 +464,7 @@ def _load_images(image_files):
     """Load images from file paths."""
     return [Image.open(f) for f in image_files]
 
-def get_global_value_range(data_files):
+def get_global_value_range(data_files, return_int=True, return_symmetric=False):
     """
     Given a list of file paths (npy or nii.gz), return (min, max) of all values across all files.
     """
@@ -472,20 +472,30 @@ def get_global_value_range(data_files):
     global_max = -np.inf
     assert len(data_files) > 0, "data_files list should not be empty."
     for f in data_files:
-        if f.endswith('.npy'):
-            data = np.load(f)
-        elif f.endswith('.nii') or f.endswith('.nii.gz'):
-            import nibabel as nib
-            data = nib.load(f).get_fdata()
+        if type(f) == np.ndarray:
+            data = f
+        elif type(f) == str:
+            if f.endswith('.npy'):
+                data = np.load(f)
+            elif f.endswith('.nii') or f.endswith('.nii.gz'):
+                import nibabel as nib
+                data = nib.load(f).get_fdata()
+            else:
+                raise ValueError(f"Unsupported file type: {f}")
         else:
             raise ValueError(f"Unsupported file type: {f}")
+        
         # Flatten and ignore NaNs
         data = data[np.isfinite(data)]
         if data.size == 0:
             continue
         global_min = min(global_min, np.min(data))
         global_max = max(global_max, np.max(data))
-    global_max = int(np.ceil(global_max))
+    if return_int:
+        global_max, global_min = int(np.ceil(global_max)), int(np.floor(global_min))
+    if return_symmetric:
+        absv = np.max((np.abs(global_max), np.abs(global_min)))
+        global_min, global_max = -1*absv, absv
     return (global_min, global_max)
 
 def compile_surface_plots_to_grid(image_files, data_files, output_path, atlas='Schaefer', 
