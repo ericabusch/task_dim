@@ -346,11 +346,11 @@ def expand_parcellation_to_volume(values, atlas_img):
     for region in range(1, len(values)+1):
         out_vol[atlas_data == region] = values[region-1]
 	# Figure out how many voxels are nan
-    print(f'number of nan voxels: {(out_vol == 1000).sum()} out of {out_vol.size} total voxels')
     out_vol[atlas_data == 0] = np.nan
+    print(f'number of unfilled voxels: {(out_vol == 1000).sum()} out of {out_vol.size} total voxels')
     return nib.Nifti1Image(out_vol, atlas_img.affine, atlas_img.header)
 
-def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type='fslr', target_density='32k', include_cbar=False, title=None,method='nearest', threshold=None, mask_medial_wall=True):
+def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type='fslr', map_type='inflated', target_density='32k', include_cbar=False, title=None,method='nearest', threshold=None, mask_medial_wall=True):
 	"""
 	Generate and save surface plots from data arrays.
 	"""
@@ -365,7 +365,7 @@ def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type=
 	if not isinstance(vol_img, nib.Nifti1Image):
 			raise ValueError("vol_img must be a Nifti image or a valid numpy array.")       
 	
-	surfs, data, mask = vol_to_surf(vol_img, surf_type=surf_type, map_type='inflated', target_density=target_density, method=method)
+	surfs, data, mask = vol_to_surf(vol_img, surf_type=surf_type, map_type=map_type, target_density=target_density, method=method)
 	if not mask_medial_wall:
 		mask=None
 
@@ -761,3 +761,24 @@ def compile_surface_plots_to_grid_by_rows(
 	print(f"Compiled surface plots into grid (by rows): {output_path}")
 	plt.close(fig)
 	return output_path
+
+def determine_colorbar_range(vals, cmap=None):
+	# Get global min/max for color scaling
+	vmin = np.nanmin(vals)
+	vmax = np.nanmax(vals)
+	# Round these to even numbers for better colorbar ticks
+	vmin_rounded = np.floor(vmin * 10) / 10
+	vmax_rounded = np.ceil(vmax * 10) / 10
+	print(f"Rounded colorbar range: {vmin_rounded} to {vmax_rounded}")
+	# If zero is between these, adjust to be symmetric
+	if vmin_rounded < 0 < vmax_rounded:
+		abs_max = max(abs(vmin_rounded), abs(vmax_rounded))
+		vmin_rounded = -abs_max
+		vmax_rounded = abs_max
+		print(f"Adjusted to symmetric colorbar range: {vmin_rounded} to {vmax_rounded}")
+		if cmap is None:
+			cmap = diverging_colormap_bp()
+	else:
+		if cmap is None:
+			cmap = 'viridis'
+	return (vmin_rounded, vmax_rounded), cmap
