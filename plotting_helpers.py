@@ -16,6 +16,20 @@ from neuromaps.transforms import mni152_to_fslr, mni152_to_fsaverage, mni152_to_
 from neuromaps.datasets import fetch_fslr, fetch_fsaverage, fetch_civet
 from collections import defaultdict
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from obspy.imaging.cm import viridis_white, viridis_white_r
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
+def get_asterisks_pvalue(pvalue):
+	if pvalue < 0.001:
+		return '***'
+	elif pvalue < 0.01:
+		return '**'
+	elif pvalue < 0.05:
+		return '*'
+	else:
+		return 'ns'
 
 def make_layers_dict(data, cmap, mask=None, alpha=0.75, label=None, color_range=None, cbar=True):
 	d = defaultdict()
@@ -28,6 +42,20 @@ def make_layers_dict(data, cmap, mask=None, alpha=0.75, label=None, color_range=
 	d['cbar'] = cbar
 	return d
 
+def diverging_colormap_gpu():
+	# Hex codes for the colors
+	colors = [
+		"#033300",  
+		"#1F7919",
+		"#9EEB99",  # turquoise
+		"#FFFFFF",  # white
+		"#DEB8EE",  # pink
+		"#A953CA",
+		"#6C0097",   
+	]
+	colormap = LinearSegmentedColormap.from_list("custom_diverging_hex", colors)
+	return colormap
+
 def diverging_colormap_bp():
     """
     Create a continuous diverging colormap using hex codes:
@@ -36,20 +64,18 @@ def diverging_colormap_bp():
     """
     # Hex codes for the colors
     colors = [
-		"#081237",
         "#0C83AA",  
         "#30DCFF",
         "#B3FAFF",  # turquoise
         "#FFFFFF",  # white
-        "#F8D9FA",  # pink
-        "#FE97F9",
-        "#FF0090",   
-		"#53001D"
+        "#FCA6EF",  
+        "#D44197",
+        "#78104B"   
     ]
     colormap = LinearSegmentedColormap.from_list("custom_diverging_hex", colors)
     return colormap
 
-def diverging_colormap_bp():
+def diverging_colormap_gp():
     """
     Create a continuous diverging colormap using hex codes:
     dark blue -> turquoise -> white -> pink -> red
@@ -61,15 +87,20 @@ def diverging_colormap_bp():
         "#34AE00",
         "#84FF00",  
         "#FFFFFF",  # white
-        "#F8D9FA",  
-        "#FE97F9",
-        "#FF0090"   
+        "#FCA6EF",  
+        "#D44197",
+        "#78104B"   
     ]
     colormap = LinearSegmentedColormap.from_list("custom_diverging_hex", colors)
     return colormap
 
+def get_palette12_rainbow():
+	hex = ["#ED5151","#FE762D", "#FEA72D", "#F7F43A","#CCF76E", "#82AC58","#00A452", "#54EAE0","#329DDF","#3C5BF6",'#B47BBF',"#FF91E7"]
+	palette7_rainbow = sns.color_palette(hex)
+	return palette7_rainbow
+
 def get_palette7_rainbow():
-	hex = ["#ED5151",'#FE7F2D', '#FCCA46', '#A1C181', '#47A8BD','#B47BBF',"#FF91E7"]
+	hex = ["#ED5151",'#FE7F2D', '#FCCA46', '#A1C181', '#47A8BD',"#AE26CA","#FF91E7"]
 	palette7_rainbow = sns.color_palette(hex)
 	return palette7_rainbow
 
@@ -302,6 +333,160 @@ def plot_surf_data(surfs, layers_info, surf_type='fslr', views=['lateral', 'medi
 	
 	return fig, p
 
+def plot_multiple_surf_data(
+		surfs,
+		layers_info,
+		surf_type='fslr',
+		views=['lateral', 'medial'],
+		zoom=1.35,
+		brightness=0.8,
+		scale=(10, 10),
+		surf_alpha=1,
+		add_depth=True,
+		embed_nb=False,
+		colorbar=True,
+		cbar_loc='right',
+		title=None,
+		out_fn=None,
+		mask=True,
+		cbar_pad=0.01,
+		cbar_width=0.02,
+		cbar_fontsize=10,
+		cbar_nticks=3,
+	):
+	"""Plot multiple surface layers on the *same* surface with separate colorbars.
+
+	This is useful for overlays such as:
+	- base map: diverging task difference (with its own colorbar)
+	- overlay: a binary/top-percentile mask in yellow (with its own colorbar)
+
+	Parameters
+	----------
+	surfs : tuple
+		Surface geometry, typically returned by `vol_to_surf` / `numpy_to_surf`.
+	layers_info : list of dict
+		Each element should be created with `make_layers_dict(...)` and may include:
+		- data: {'left': gifti, 'right': gifti}
+		- cmap: matplotlib colormap (or name)
+		- alpha: float
+		- label: colorbar label
+		- color_range: (vmin, vmax)
+		- cbar: bool, whether to include a dedicated colorbar for this layer
+		- mask: medial wall mask dict from `vol_to_surf` (optional)
+
+	Notes
+	-----
+	- This function calls `plot_surf_data(..., colorbar=False)` to build the
+	  surface plot, then adds *separate* matplotlib colorbars for each layer
+	  that has `cbar=True`.
+	- Colorbars are stacked vertically on the right by default.
+
+	Returns
+	-------
+	fig, p
+		The matplotlib figure and surfplot Plot object.
+	"""
+
+	# Build base plot without surfplot's single shared colorbar
+	fig, p = plot_surf_data(
+		surfs=surfs,
+		layers_info=layers_info,
+		surf_type=surf_type,
+		views=views,
+		zoom=zoom,
+		brightness=brightness,
+		scale=scale,
+		surf_alpha=surf_alpha,
+		add_depth=add_depth,
+		embed_nb=embed_nb,
+		colorbar=False,  # important: we add multiple colorbars ourselves
+		cbar_loc=None,
+		title=title,
+		out_fn=None,     # delay saving until after colorbars
+		mask=mask,
+	)
+
+	if not colorbar:
+		if out_fn:
+			fig.savefig(out_fn, bbox_inches='tight', transparent=True, dpi=300)
+			plt.close('all')
+		return fig, p
+
+	# Determine the axis position of the surface plot area to place colorbars nicely.
+	# surfplot typically uses a single Axes filling the figure.
+	# We fall back to fig.axes[0] if present.
+	if len(fig.axes) == 0:
+		raise RuntimeError("No axes found on figure returned by plot_surf_data().")
+	main_ax = fig.axes[0]
+	pos = main_ax.get_position()
+
+	# Collect layers that request a colorbar (skip the optional depth layer if it has cbar=False)
+	cbar_layers = [layer for layer in layers_info if layer.get('cbar', False)]
+	if len(cbar_layers) == 0:
+		if out_fn:
+			fig.savefig(out_fn, bbox_inches='tight', transparent=True, dpi=300)
+			plt.close('all')
+		return fig, p
+
+	# Stack colorbars vertically along the chosen side
+	# Compute each colorbar's height in figure coordinates
+	n = len(cbar_layers)
+	total_h = pos.height
+	gap = 0.015  # fixed figure-coordinate gap between stacked bars
+	height = (total_h - gap * (n - 1)) / n
+
+	if cbar_loc not in ['right', 'left']:
+		# Top/bottom stacking can be added later; keep API strict for now.
+		raise ValueError("plot_multiple_surf_data currently supports cbar_loc in {'right','left'}")
+
+	for i, layer in enumerate(cbar_layers):
+		# Normalize cmap
+		layer_cmap = layer.get('cmap', 'viridis')
+		layer_cmap = plt.get_cmap(layer_cmap) if isinstance(layer_cmap, str) else layer_cmap
+
+		# Determine range
+		cr = layer.get('color_range', None)
+		if cr is None:
+			# Try to infer from layer data if possible
+			try:
+				arr = layer['data']['left'].agg_data()
+				cr = (np.nanmin(arr), np.nanmax(arr))
+			except Exception:
+				cr = (0, 1)
+
+		norm = plt.Normalize(vmin=cr[0], vmax=cr[1])
+		sm = plt.cm.ScalarMappable(cmap=layer_cmap, norm=norm)
+		sm.set_array([])
+
+		# Position each cbar axis in figure coordinates
+		bottom = pos.y0 + (n - 1 - i) * (height + gap)
+		if cbar_loc == 'right':
+			left = pos.x1 + cbar_pad
+		else:  # left
+			left = max(0.0, pos.x0 - cbar_pad - cbar_width)
+
+		cax = fig.add_axes([left, bottom, cbar_width, height])
+		cbar = fig.colorbar(sm, cax=cax, orientation='vertical')
+
+		label = layer.get('label', None)
+		if label:
+			cbar.set_label(label, fontsize=cbar_fontsize)
+		cbar.ax.tick_params(labelsize=max(6, int(cbar_fontsize * 0.9)))
+
+		# Tick density
+		try:
+			cbar.locator = ticker.MaxNLocator(nbins=cbar_nticks)
+			cbar.update_ticks()
+		except Exception:
+			pass
+
+	# Save after adding all colorbars
+	if out_fn:
+		fig.savefig(out_fn, bbox_inches='tight', transparent=True, dpi=300)
+		plt.close('all')
+
+	return fig, p
+
 def load_schaefer_atlas(resolution_mm=2, yeo_networks=17):
 
     """
@@ -323,37 +508,176 @@ def load_schaefer_atlas(resolution_mm=2, yeo_networks=17):
     atlas = fetch_atlas_schaefer_2018(resolution_mm=resolution_mm, yeo_networks=yeo_networks)
     return nib.load(atlas['maps'])
 
-def expand_parcellation_to_volume(values, atlas_img):
+# Function to expand parcel array to volume
+def expand_parcellation_to_volume(data_arr, atlas_img):
     """
-    Map region-wise values to a 3D volume based on atlas parcellation.
-
-    Parameters
-    ----------
-    values : array-like, shape (n_regions,)
-        Array of values for each region (region 1 at index 0, region 400 at index 399).
-    atlas_img : niftiabel.Nifti1Image
-		3D image of the brain with regions defined by an atlas, e.g., Schaefer
-        With voxel values 1..n_regions.
-
-    Returns
-    -------
-    out_vol : 3D numpy array
-        Volume with values assigned according to atlas.
+    Expand a 1D array of parcel values to a 3D volume image.
     """
     atlas_data = atlas_img.get_fdata()
-    out_vol = np.zeros_like(atlas_data, dtype=np.float64)
-    out_vol[:] = 1000  # Set background to nan
-    for region in range(1, len(values)+1):
-        out_vol[atlas_data == region] = values[region-1]
-	# Figure out how many voxels are nan
-    out_vol[atlas_data == 0] = np.nan
-    print(f'number of unfilled voxels: {(out_vol == 1000).sum()} out of {out_vol.size} total voxels')
-    return nib.Nifti1Image(out_vol, atlas_img.affine, atlas_img.header)
+    vol_data = np.zeros_like(atlas_data)
+    
+    # Map parcel values to volume
+    for i, val in enumerate(data_arr):
+        if not np.isnan(val):
+            vol_data[atlas_data == (i + 1)] = val
+    
+    return nib.Nifti1Image(vol_data, atlas_img.affine, atlas_img.header)
 
-def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type='fslr', map_type='inflated', target_density='32k', include_cbar=False, title=None,method='nearest', threshold=None, mask_medial_wall=True):
+def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type='fslr', map_type='inflated', target_density='32k', include_cbar=False, title=None,method='nearest', threshold=None, mask_medial_wall=True,
+						 alpha=1, label=None, layers_kwargs=None):
+	"""Generate and save surface plots from data arrays.
+
+	Enhancement: `data_fn` can be either a single object or a list/tuple of objects.
+	
+	- Single object: behaves as before (one layer, optionally one colorbar).
+	- List/tuple: each element becomes a separate surface layer and the plot is
+	  rendered via `plot_multiple_surf_data` with separate colorbars.
+
+	Parameters
+	----------
+	data_fn : (str | np.ndarray | nib.Nifti1Image) or list
+		Data to plot, or list of data objects.
+	cmap, cbar_range :
+		For multi-layer mode these can be scalars (broadcasted) or lists matching
+		`len(data_fn)`.
+	include_cbar : bool
+		In multi-layer mode: if bool, broadcast to all layers; if list, per-layer.
+	alpha, label :
+		Single-layer defaults. For multi-layer mode, pass `layers_kwargs`.
+	layers_kwargs : list[dict] | None
+		Optional per-layer overrides. Each dict can include keys:
+		`cmap`, `cbar_range`, `alpha`, `label`, `cbar`.
+
+	Returns
+	-------
+	image_fn, vol_img
+		In multi-layer mode `vol_img` is a list of the prepared Nifti images.
 	"""
-	Generate and save surface plots from data arrays.
-	"""
+
+	# -------------------------
+	# Multi-layer path
+	# -------------------------
+	if isinstance(data_fn, (list, tuple)):
+		data_list = list(data_fn)
+		if len(data_list) == 0:
+			raise ValueError("data_fn is an empty list/tuple.")
+
+		# Normalize per-layer kwargs
+		layers_kwargs = layers_kwargs or [{} for _ in range(len(data_list))]
+		if len(layers_kwargs) != len(data_list):
+			raise ValueError("layers_kwargs must be the same length as data_fn when data_fn is a list.")
+
+		# Broadcast cmap / range / cbar settings if needed
+		if isinstance(cmap, (list, tuple)):
+			cmaps = list(cmap)
+			if len(cmaps) != len(data_list):
+				raise ValueError("If cmap is a list/tuple, it must match len(data_fn).")
+		else:
+			cmaps = [cmap] * len(data_list)
+
+		if isinstance(cbar_range, (list, tuple)) and len(cbar_range) == 2 and not isinstance(cbar_range[0], (list, tuple)):
+			# Treat as a single (vmin, vmax)
+			ranges = [tuple(cbar_range)] * len(data_list)
+		elif isinstance(cbar_range, (list, tuple)):
+			ranges = list(cbar_range)
+			if len(ranges) != len(data_list):
+				raise ValueError("If cbar_range is a list, it must match len(data_fn) OR be a single (vmin,vmax).")
+		else:
+			ranges = [cbar_range] * len(data_list)
+
+		if isinstance(include_cbar, (list, tuple)):
+			cbars = list(include_cbar)
+			if len(cbars) != len(data_list):
+				raise ValueError("If include_cbar is a list/tuple, it must match len(data_fn).")
+		else:
+			cbars = [bool(include_cbar)] * len(data_list)
+
+		# Prepare each layer (vol -> surf) and share the same surface geometry
+		vol_imgs = []
+		layers_info = []
+		shared_surfs = None
+		shared_mask = None
+
+		for i, obj in enumerate(data_list):
+			this_kwargs = layers_kwargs[i] or {}
+			this_cmap = this_kwargs.get('cmap', cmaps[i])
+			this_range = this_kwargs.get('cbar_range', ranges[i])
+			this_alpha = this_kwargs.get('alpha', alpha)
+			this_label = this_kwargs.get('label', label)
+			this_cbar = this_kwargs.get('cbar', cbars[i])
+
+			# Resolve volume image
+			if atlas == 'Schaefer':
+				atlas_img = load_schaefer_atlas()
+				data_arr = np.load(obj) if isinstance(obj, str) else obj
+				vol_img = expand_parcellation_to_volume(data_arr, atlas_img)
+			elif atlas == 'searchlight':
+				vol_img = nib.load(obj) if isinstance(obj, str) else obj
+			else:
+				raise ValueError("Invalid atlas type. Choose 'Schaefer' or 'searchlight'.")
+
+			if not isinstance(vol_img, nib.Nifti1Image):
+				raise ValueError("Each item in data_fn must resolve to a Nifti image (or valid array for Schaefer).")
+			vol_imgs.append(vol_img)
+
+			surfs, data, mask = vol_to_surf(vol_img, surf_type=surf_type, map_type=map_type, target_density=target_density, method=method)
+			if not mask_medial_wall:
+				mask = None
+
+			# Ensure all layers use identical surface geometry
+			if shared_surfs is None:
+				shared_surfs = surfs
+				shared_mask = mask
+			else:
+				# Keep the first surfaces/mask; assume caller passed compatible images
+				pass
+
+			# Thresholding per-layer
+			if threshold is not None:
+				center = (this_range[0] + this_range[1]) / 2
+				for hemi in ['left', 'right']:
+					arr = data[hemi].agg_data().copy()
+					if abs(center) < 1e-6:
+						mask_idx = (arr > -threshold) & (arr < threshold)
+					else:
+						mask_idx = (arr > 0) & (arr < threshold)
+					arr[mask_idx] = np.nan
+					new_img = nib.gifti.GiftiImage()
+					new_img.add_gifti_data_array(
+						nib.gifti.GiftiDataArray(arr.squeeze(), intent='NIFTI_INTENT_SHAPE', datatype='NIFTI_TYPE_FLOAT32')
+					)
+					data[hemi] = new_img
+
+			layer = make_layers_dict(
+				data=data,
+				mask=shared_mask,
+				cmap=plt.get_cmap(this_cmap) if isinstance(this_cmap, str) else this_cmap,
+				alpha=this_alpha,
+				label=this_label,
+				color_range=this_range,
+				cbar=this_cbar,
+			)
+			layers_info.append(layer)
+
+		# Render
+		plot_multiple_surf_data(
+			shared_surfs,
+			layers_info,
+			surf_type=surf_type,
+			colorbar=True,
+			title=title,
+			out_fn=image_fn,
+			mask=mask_medial_wall,
+		)
+
+		print("Generated multi-layer surface plot:", image_fn)
+		if image_fn is not None:
+			plt.close('all')
+		return image_fn, vol_imgs
+
+	# -------------------------
+	# Single-layer path (original)
+	# -------------------------
 	if atlas == 'Schaefer':
 		atlas_img = load_schaefer_atlas()
 		data_arr = np.load(data_fn) if isinstance(data_fn, str) else data_fn
@@ -361,17 +685,17 @@ def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type=
 	elif atlas == 'searchlight':
 		vol_img = nib.load(data_fn) if isinstance(data_fn, str) else data_fn
 	else:
-		raise ValueError("Invalid atlas type. Choose 'Schaefer' or 'searchlight'.") 
+		raise ValueError("Invalid atlas type. Choose 'Schaefer' or 'searchlight'.")
 	if not isinstance(vol_img, nib.Nifti1Image):
-			raise ValueError("vol_img must be a Nifti image or a valid numpy array.")       
-	
+			raise ValueError("vol_img must be a Nifti image or a valid numpy array.")
+
 	surfs, data, mask = vol_to_surf(vol_img, surf_type=surf_type, map_type=map_type, target_density=target_density, method=method)
 	if not mask_medial_wall:
-		mask=None
+		mask = None
 
 	# --- Masking logic ---
 	if threshold is not None:
-        # Get the colorbar center
+		# Get the colorbar center
 		center = (cbar_range[0] + cbar_range[1]) / 2
 		for hemi in ['left', 'right']:
 			arr = data[hemi].agg_data().copy()
@@ -380,18 +704,18 @@ def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type=
 			else:  # Not centered at 0
 				mask_idx = (arr > 0) & (arr < threshold)
 			arr[mask_idx] = np.nan
-            # Update the data object
+			# Update the data object
 			new_img = nib.gifti.GiftiImage()
 			new_img.add_gifti_data_array(
-                nib.gifti.GiftiDataArray(arr.squeeze(), intent='NIFTI_INTENT_SHAPE', datatype='NIFTI_TYPE_FLOAT32')
-            )
+				nib.gifti.GiftiDataArray(arr.squeeze(), intent='NIFTI_INTENT_SHAPE', datatype='NIFTI_TYPE_FLOAT32')
+			)
 			data[hemi] = new_img
-	
+
 	layer = make_layers_dict(
-		data=data, mask=mask, cmap=plt.get_cmap(cmap), alpha=1, color_range=cbar_range, cbar=include_cbar
+		data=data, mask=mask, cmap=plt.get_cmap(cmap) if isinstance(cmap, str) else cmap, alpha=1, label=label, color_range=cbar_range, cbar=include_cbar
 	)
 	plot_surf_data(
-		surfs, [layer], surf_type=surf_type, colorbar=include_cbar, title=title, out_fn=image_fn 
+		surfs, [layer], surf_type=surf_type, colorbar=include_cbar, title=title, out_fn=image_fn
 	)
 	print("Generated surface plot:", image_fn)
 	if image_fn is not None:
@@ -757,7 +1081,7 @@ def compile_surface_plots_to_grid_by_rows(
 		cbar.ax.tick_params(labelsize=20)
 
 	plt.subplots_adjust(left=0.03, right=0.92, top=0.92, bottom=0.05, wspace=0.05, hspace=0.05)
-	plt.savefig(output_path, bbox_inches='tight', dpi=300)
+	plt.savefig(output_path, bbox_inches='tight', dpi=300, transparent=True, format='pdf')
 	print(f"Compiled surface plots into grid (by rows): {output_path}")
 	plt.close(fig)
 	return output_path
@@ -769,16 +1093,111 @@ def determine_colorbar_range(vals, cmap=None):
 	# Round these to even numbers for better colorbar ticks
 	vmin_rounded = np.floor(vmin * 10) / 10
 	vmax_rounded = np.ceil(vmax * 10) / 10
-	print(f"Rounded colorbar range: {vmin_rounded} to {vmax_rounded}")
 	# If zero is between these, adjust to be symmetric
 	if vmin_rounded < 0 < vmax_rounded:
 		abs_max = max(abs(vmin_rounded), abs(vmax_rounded))
 		vmin_rounded = -abs_max
 		vmax_rounded = abs_max
-		print(f"Adjusted to symmetric colorbar range: {vmin_rounded} to {vmax_rounded}")
 		if cmap is None:
 			cmap = diverging_colormap_bp()
 	else:
 		if cmap is None:
 			cmap = 'viridis'
 	return (vmin_rounded, vmax_rounded), cmap
+
+def plot_parcelwise_regression_results(regression_df, title=None, region_order=[], output_path=None, 
+                            region_col='region_name', atlas='Schaefer',
+                            surf_type='fsaverage', target_density='41k',
+                            method='nearest', mask_medial_wall=True,
+                            stats_to_plot=['t', 'coef', 'r2'],
+                            mask_nonsig=True):
+    """
+    Plot regression results on cortical surface for multiple statistics.
+    
+    Parameters
+    ----------
+    regression_df : pd.DataFrame
+        Output from parcelwise_regression containing columns for region_col and statistics.
+    title : str or None
+        Base title for plots. If None, will use generic title.
+    output_path : str or None
+        Base path for saving figures. If None, will not save.
+        Actual filenames will be {output_path}_{stat}.png
+    region_col : str, default='region_name'
+        Column name containing region identifiers.
+    atlas : str, default='Schaefer'
+        Atlas name for surface plotting.
+    surf_type : str, default='fsaverage'
+        Surface type (fsaverage, fslr, civet).
+    target_density : str, default='41k'
+        Target surface density.
+    method : str, default='nearest'
+        Interpolation method.
+    mask_medial_wall : bool, default=True
+        Whether to mask the medial wall.
+    stats_to_plot : list of str, default=['t', 'coef', 'r2']
+        Which statistics to plot.
+    mask_nonsig : bool, default=True
+        Whether to mask non-significant regions (using sig_fdr column).
+    
+    Returns
+    -------
+    None
+        Generates surface plots.
+    """
+    
+    print(f'Will plot: ', stats_to_plot)
+    for stat in stats_to_plot:
+        if stat not in regression_df.columns:
+            print(f"Warning: '{stat}' not found in regression_df columns. Skipping.")
+            continue
+        
+        # Extract values
+        vals = regression_df.set_index(region_col).reindex(region_order)[stat].values
+        
+        # Apply significance mask if requested
+        if stat != 'r2' and mask_nonsig:
+            # Find the corresponding 'sig_fdr' column
+            try:
+                root = stat.split('_')[-1]
+                sig_mask = regression_df.set_index(region_col).reindex(region_order)[f'sig_{root}_fdr'].values
+                vals_masked = vals * sig_mask
+            except:
+                vals_masked = vals
+                print(f"Warning: significance mask column for '{stat}' not found. Proceeding without masking.")
+        else:
+            vals_masked = vals
+        
+        # Determine colorbar range and colormap
+        cbar_range, cmap = determine_colorbar_range(vals_masked)
+        
+        # Create title
+        if title is not None:
+            plot_title = f'{title}: {stat.upper()}'
+        else:
+            plot_title = f'{stat.upper()}'
+        
+        # Create output filename
+        if output_path is not None:
+            # Remove extension if present
+            base_path = output_path.rsplit('.', 1)[0]
+            image_fn = f'{base_path}_{stat}.png'
+        else:
+            image_fn = None
+        
+        # Generate surface plot
+        generate_surface_plot(
+            vals_masked,
+            image_fn=image_fn,
+            atlas=atlas,
+            cmap=cmap,
+            cbar_range=cbar_range,
+            surf_type=surf_type,
+            target_density=target_density,
+            include_cbar=True,
+            title=plot_title,
+            method=method,
+            threshold=None,
+            mask_medial_wall=mask_medial_wall
+        )
+

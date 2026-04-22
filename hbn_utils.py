@@ -48,6 +48,10 @@ def load_ide_isc_atlas_df():
     df = pd.read_csv(f'{get_results_dir()}/parcelwise_results_ISC_IDE.csv',index_col=0)
     return df
 
+def load_participant_df():
+    df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}',index_col=0)
+    return df
+
 def get_subject_age(subject_id):
     par_df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}')
     age = par_df[par_df['subject_id']==subject_id]['age'].item()
@@ -67,6 +71,17 @@ def get_subject_group(subject_id):
     par_df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}')
     age_group = par_df[par_df['subject_id']==subject_id]['AgeGroup1'].item()
     return age_group
+
+def get_subject_motion(subject_id, task='movieTP'):
+    if task == 'movieTP':
+        motion_col = 'movie_FD'
+    elif task == 'rest':
+        motion_col = 'rest_FD'
+    else:
+        print(f'Task {task} not recognized for motion retrieval'); return None
+    par_df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}')
+    motion = par_df[par_df['subject_id']==subject_id][motion_col].item()
+    return motion
 
 def get_intersecting_subjects(subject_filter='all'):
     # if subject_filter == 'all' or subject_filter == '0':

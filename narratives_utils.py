@@ -21,6 +21,13 @@ def get_brain_cmap(mpl_colorname='inferno'):
     brain_cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", [color_list[i] for i in indices])
     return brain_cmap
 
+def load_ide_isc_atlas_df():
+    try:
+        df = pd.read_csv(f'{get_results_dir()}/parcelwise_ide_isc_atlas_df.csv',index_col=0)
+    except:
+        print('Could not load parcelwise ide isc atlas df'); os.exit(1)
+    return df
+
 def determine_intersecting_subjects(narratives_dir=None, task_list=[]):
     '''
     from TLB

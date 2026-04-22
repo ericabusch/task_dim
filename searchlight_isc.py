@@ -14,7 +14,7 @@ from nilearn import plotting
 from nilearn.maskers import NiftiMasker, NiftiLabelsMasker
 from brainiak.searchlight.searchlight import Searchlight
 from nibabel.nifti1 import Nifti1Image
-from stats_helper import timeseries_correlation_permutation
+from task_dim.stats_helpers import timeseries_correlation_permutation
 from sklearn.decomposition import PCA
 import warnings
 warnings.filterwarnings("ignore")

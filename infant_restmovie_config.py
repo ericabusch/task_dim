@@ -1,10 +1,18 @@
 from os.path import join
 import numpy as np
+import os
 
 NJOBS=16
 VERBOSE=True
-ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
-SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
+
+# check if running on milgram or misha
+if 'milgram' in os.uname()[1]:
+    ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
+    SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
+else:
+    ROOT = '/gpfs/radev/home/elb77/project/task_dim'
+    SCRATCH_DIR = f'/gpfs/radev/scratch60/turk-browne/elb77/task_dim_sandbox'
+
 KNN=5
 THRESHOLD=0.9
 IDE_METHODS = ['TPHATE_DiffOp_IDE','PHATE_DiffOp_IDE', 'MiND_ML','PCA','MLE','lPCA']

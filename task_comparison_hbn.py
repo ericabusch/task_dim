@@ -9,7 +9,7 @@ import nibabel as nib
 from hbn_config import *
 from hbn_utils import *
 from nilearn import datasets
-import stats_helper
+import task_dim.stats_helpers as stats_helpers
 from scipy import stats
 from nilearn import plotting
 from nilearn.maskers import NiftiMasker, NiftiLabelsMasker
@@ -66,7 +66,7 @@ def run_difference_atlas(subjects_confirmed, task_pair, method, outfilename, plo
 	# run t test
 	t, p = stats.ttest_1samp(arr, popmean=0, axis=0)
 	mu = np.mean(arr, axis=0)
-	adj_p = stats_helper.false_discovery_control(p)
+	adj_p = stats_helpers.false_discovery_control(p)
 	pval_mask = np.zeros_like(p)
 	pval_mask[adj_p<=alpha]=1
 	masked_mu = mu * pval_mask
@@ -115,13 +115,11 @@ if __name__ == '__main__':
 
 	# compare pairs of tasks
 	TASKS=['rest','movieTP']
-	METHODS_TO_RUN = ['TPHATE_DiffOp_IDE','TPHATE_optt','TPHATE_IDE_GAP','PCA']#, 'MiND_ML', 'lPCA','PCA']
+	METHODS_TO_RUN = ['TPHATE_DiffOp_IDE', 'PCA']#, 'MiND_ML', 'lPCA','PCA']
 
-	subjects = determine_intersecting_subjects()
-	subjects_confirmed = []
-	for s in subjects:
-		if check_has_tasks(s, TASKS[0], TASKS[1]):
-			subjects_confirmed.append(s)
+	# Load in the results file
+	df = utils.load_ide_isc_atlas_df()
+	
 
 	if p.verbose: print(f'found {len(subjects_confirmed)} subs')
 	os.makedirs(f'{get_results_dir()}/task_difference_maps',exist_ok=True)

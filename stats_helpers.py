@@ -4,6 +4,11 @@ from sklearn.utils import check_random_state
 from joblib import Parallel, delayed
 from scipy.stats import pearsonr, spearmanr, kendalltau, ttest_rel, ttest_1samp
 from statsmodels.stats.multitest import multipletests
+import statsmodels.formula.api as smf
+import pandas as pd
+import pingouin as pg
+import sys
+import re
 
 def permutation_test(data, n_iterations, alternative='greater'):
     """
@@ -54,6 +59,60 @@ def fisher_r_to_z(r):
 def fisher_z_to_r(z):
     """Use Fisher transformation to convert correlation to z score"""
     return np.tanh(z)
+
+def overlap_coefficient(a, b, *, treat_nan_as_false=True, empty_value=np.nan):
+    """Compute the overlap (Szymkiewicz–Simpson) coefficient between two sets/masks.
+
+    Overlap coefficient:
+        |A ∩ B| / min(|A|, |B|)
+
+    Parameters
+    ----------
+    a, b : array-like or set
+        Inputs representing membership. If array-like, nonzero/True values count as members.
+        If sets, elements are treated as members directly.
+    treat_nan_as_false : bool, default=True
+        If inputs are array-like and contain NaNs, treat NaN as False (not a member).
+    empty_value : float, default=np.nan
+        Return value when either set is empty (i.e., min(|A|,|B|)==0).
+
+    Returns
+    -------
+    float
+        Overlap coefficient in [0, 1], or `empty_value` if undefined.
+    """
+    # Set inputs
+    if isinstance(a, set) and isinstance(b, set):
+        A, B = a, b
+        den = min(len(A), len(B))
+        if den == 0:
+            return empty_value
+        return len(A.intersection(B)) / den
+
+    # Array-like inputs
+    a_arr = np.asarray(a)
+    b_arr = np.asarray(b)
+
+    if a_arr.shape != b_arr.shape:
+        raise ValueError(f"Shape mismatch: a {a_arr.shape} vs b {b_arr.shape}")
+
+    if treat_nan_as_false:
+        # Make NaNs false before boolean conversion
+        if np.issubdtype(a_arr.dtype, np.floating):
+            a_arr = np.nan_to_num(a_arr, nan=0.0)
+        if np.issubdtype(b_arr.dtype, np.floating):
+            b_arr = np.nan_to_num(b_arr, nan=0.0)
+
+    A = a_arr.astype(bool)
+    B = b_arr.astype(bool)
+
+    inter = np.count_nonzero(A & B)
+    sizeA = np.count_nonzero(A)
+    sizeB = np.count_nonzero(B)
+    den = min(sizeA, sizeB)
+    if den == 0:
+        return empty_value
+    return inter / den
 
 def timeseries_correlation_permutation(
     data1,
@@ -146,8 +205,6 @@ def circular_shift_correlation(data1, data2, correlation_function, repetition_nu
     shifted = np.roll(data1.T, repetition_number).T.ravel()
     return correlation_function(shifted, data2.ravel())[0]
 
-
-
 def calc_pval_zstat(null_stats, true_stat, tail='two-tailed'):
     """Calculates p value based on distribution of correlations
     This function is called by the permutation functions
@@ -169,8 +226,6 @@ def calc_pval_zstat(null_stats, true_stat, tail='two-tailed'):
         raise ValueError("tail must be 'two-tailed', 'greater', or 'less'")
     return z, p
     
-
-
 def paired_difference_ttest(arr1, arr2, alpha=0.05, alternative='greater'):
     """
     Compute within-sample differences, test if difference > 0 using related samples t-test,
@@ -212,8 +267,7 @@ def paired_difference_ttest(arr1, arr2, alpha=0.05, alternative='greater'):
 
     return mean_diff, pvals, sig_mask
 
-
-def paired_difference_null_distribution(arr1, arr2, alpha=0.05, n_perm=1000, random_state=None,alternative='greater'):
+def paired_difference_null_distribution(arr1, arr2, alpha=0.05, n_perm=1000, random_state=None, alternative='greater'):
     """
     Compute within-sample differences, test if difference > 0 using a permutation test,
     and apply Benjamini-Hochberg FDR correction.
@@ -269,6 +323,36 @@ def paired_difference_null_distribution(arr1, arr2, alpha=0.05, n_perm=1000, ran
 
     return mean_diff, pvals, sig_mask
 
+def permute_pattern(data0, data1, n_permutations=1000, random_state=None, corr_func=spearmanr):
+    """Generate spatially permuted versions of a pattern.
+
+    Args:
+        pattern (np.ndarray): 1D array of brain values to permute.
+        n_permutations (int): Number of permutations to generate.
+        method (str): Method for spatial permutation ('spin' or other).
+        random_state (int or None): Random seed for reproducibility.
+
+    Returns:
+        np.ndarray: 2D array of shape (n_permutations, len(pattern)) with permuted patterns.
+    """
+    
+
+    if random_state is not None:
+        np.random.seed(random_state)
+    permuted_pattern = data0.copy()
+    null_correlations = np.zeros(n_permutations)
+    for i in range(n_permutations):
+        # Generate a random permutation of indices
+        perm_indices = np.random.permutation(len(data0))
+        permuted_data0 = data0[perm_indices]
+        # Compute correlation with data1
+        corr, _ = corr_func(permuted_data0, data1)
+        null_correlations[i] = corr
+    true_correlation, _ = corr_func(data0, data1)
+    p_value = (np.sum(np.abs(null_correlations) >= np.abs(true_correlation)) + 1) / (n_permutations + 1)
+    zscored = (true_correlation - np.mean(null_correlations)) / np.std(null_correlations)
+    return p_value, true_correlation, zscored
+
 def paired_difference_resampling_distribution(arr1, arr2, alpha=0.05, n_perm=1000, random_state=None, alternative='greater'):
     """
     Compute within-sample differences, test if difference > 0 using a resampling test,
@@ -322,6 +406,7 @@ def paired_difference_resampling_distribution(arr1, arr2, alpha=0.05, n_perm=100
 
     reject, pvals_corr, _, _ = multipletests(pvals, alpha=alpha, method='fdr_bh')
     sig_mask = reject
+    return mean_diff, pvals_corr, sig_mask
 
 def false_discovery_control(ps, *, axis=0, method='bh'):
     """Adjust p-values to control the false discovery rate.
@@ -427,3 +512,257 @@ def false_discovery_control(ps, *, axis=0, method='bh'):
                 i+=1
         ps = temp
     return ps
+
+def parcelwise_regression(score_df, xname, yname='score', covariates=None, formula=None, 
+                         region_col='region_name', region_order=[], 
+                         alpha=0.05, fdr_method='fdr_bh'):
+    """
+    Perform linear regression for each parcel/region and return coef, t, p for
+    every predictor (including covariates). Perform multiple-comparison (FDR)
+    correction separately for each predictor name across regions.
+
+    Notes
+    - Predictor column names in results are created with underscores:
+        coef_<predictor>, t_<predictor>, p_<predictor>
+    - FDR-corrected p-values and significance flags are:
+        p_<predictor>_fdr, sig_<predictor>_fdr
+    - Predictor names are taken from the regression parameter names
+      (i.e., model.params index) except the intercept. This handles numeric
+      predictors and expanded categorical parameter names created by patsy.
+    """
+
+    df = score_df.copy()
+    # Build formula if not provided
+    if formula is None:
+        if covariates is None or covariates == [None]:
+            formula = f'{yname} ~ {xname}'
+        else:
+            cov_str = ' + '.join(covariates)
+            # If xname is a list/tuple, join them
+            if isinstance(xname, (list, tuple)):
+                xstr = ' + '.join(xname)
+            else:
+                xstr = str(xname)
+            formula = f'{yname} ~ {xstr} + {cov_str}'
+    print(f'Using formula: {formula}')
+    # Get region list
+    if len(region_order) == 0:
+        region_order = sorted(df[region_col].unique())
+
+    rows = []
+    # We'll collect all observed parameter names across regions to ensure columns exist
+    observed_params = set()
+
+    for reg in region_order:
+        df_reg = df[df[region_col] == reg].copy().reset_index(drop=True)
+        try:
+            # Fit model; let patsy handle missing values automatically
+            model = smf.ols(formula, data=df_reg).fit()
+
+            entry = {region_col: reg, 'r2': model.rsquared, 'n': int(model.nobs)}
+            # For each parameter in the fitted model (except Intercept) record coef/t/p
+            for param in model.params.index:
+                if param == 'Intercept':
+                    continue
+                safe = re.sub(r'[^0-9a-zA-Z]+', '_', str(param))
+                observed_params.add((param, safe))
+                entry[f'coef_{safe}'] = model.params.get(param, np.nan)
+                entry[f'tstat_{safe}'] = model.tvalues.get(param, np.nan)
+                entry[f'p_{safe}'] = model.pvalues.get(param, np.nan)
+
+            rows.append(entry)
+
+        except Exception as e:
+            # If regression fails, create an entry with NA values for any parameters we have seen so far
+            print(f"Warning: Regression failed for region {reg}: {e}")
+            sys.exit()
+            entry = {region_col: reg, 'r2': np.nan, 'n': 0}
+            # fill placeholders for previously observed params
+            for param, safe in observed_params:
+                entry[f'coef_{safe}'] = np.nan
+                entry[f'tstat_{safe}'] = np.nan
+                entry[f'p_{safe}'] = np.nan
+            rows.append(entry)
+
+    results_df = pd.DataFrame(rows)
+
+    # Ensure all observed parameters have their columns in the dataframe (in case some regions failed before any param seen)
+    for param, safe in observed_params:
+        for col_prefix in ('coef_', 'tstat_', 'p_'):
+            col = f'{col_prefix}{safe}'
+            if col not in results_df.columns:
+                results_df[col] = np.nan
+
+    # Identify all predictor-safe-names from p_ columns
+    p_cols = [c for c in results_df.columns if c.startswith('p_')]
+    # Perform FDR correction within each predictor (i.e., for each p_ column independently)
+    for p_col in p_cols:
+        safe = p_col[len('p_'):]
+        p_fdr_col = f'p_{safe}_fdr'
+        sig_col = f'sig_{safe}_fdr'
+
+        valid_mask = results_df[p_col].notna()
+        if valid_mask.sum() > 0:
+            reject, pvals_fdr, _, _ = multipletests(
+                results_df.loc[valid_mask, p_col].values,
+                alpha=alpha,
+                method=fdr_method
+            )
+            # assign corrected p-values and boolean significance
+            results_df.loc[valid_mask, p_fdr_col] = pvals_fdr
+            results_df.loc[valid_mask, sig_col] = reject
+            # for rows without valid p, set defaults
+            results_df.loc[~valid_mask, p_fdr_col] = np.nan
+            results_df.loc[~valid_mask, sig_col] = False
+        else:
+            # no valid pvals for this predictor
+            results_df[p_fdr_col] = np.nan
+            results_df[sig_col] = False
+
+    # Reorder columns: region_col, n, r2, then sorted predictor blocks
+    other_cols = [region_col, 'n', 'r2']
+    predictor_blocks = []
+    # sort observed_params by safe name for deterministic order
+    safes = sorted({safe for _, safe in observed_params})
+    for safe in safes:
+        predictor_blocks.extend([f'coef_{safe}', f'tstat_{safe}', f'p_{safe}', f'p_{safe}_fdr', f'sig_{safe}_fdr'])
+    # Keep any extra columns that may exist
+    remaining = [c for c in results_df.columns if c not in other_cols + predictor_blocks]
+    ordered_cols = [c for c in other_cols + predictor_blocks + remaining if c in results_df.columns]
+    results_df = results_df[ordered_cols]
+
+    return results_df
+
+def parcelwise_partial_correlation(score_df, xname, yname='score', covariates=None, 
+                                   participant_df=None, region_col='region_name', 
+                                   region_order=[], subject_col='subject',
+                                   alpha=0.05, fdr_method='fdr_bh', method='spearman'):
+    """
+    Compute partial correlation for each parcel/region using Pingouin.
+    
+    Parameters
+    ----------
+    score_df : pd.DataFrame
+        DataFrame containing score data with columns for region, subject, and dependent variable.
+    xname : str
+        Name of the primary predictor variable (e.g., 'Age').
+    yname : str, default='score'
+        Name of the dependent variable column.
+    covariates : list of str or None
+        List of covariate names to partial out. If None or empty, returns simple correlation.
+    participant_df : pd.DataFrame or None
+        DataFrame with participant-level data (for merging covariates if needed).
+    region_col : str, default='region_name'
+        Name of the column containing region/parcel identifiers.
+    region_order : list, default=[]
+        Ordered list of regions to process. If empty, uses sorted unique regions.
+    subject_col : str, default='subject'
+        Name of the column containing subject identifiers.
+    alpha : float, default=0.05
+        Significance threshold for FDR correction.
+    fdr_method : str, default='fdr_bh'
+        Method for FDR correction.
+    method : str, default='spearman'
+        Correlation method: 'spearman' or 'pearson'.
+    
+    Returns
+    -------
+    results_df : pd.DataFrame
+        DataFrame with one row per region containing partial correlations and statistics.
+    """
+    
+    df = score_df.copy()
+    
+    # Merge participant-level covariates if needed
+    if covariates is not None and covariates != [None]:
+        missing_cols = [c for c in covariates if c not in df.columns]
+        if missing_cols and participant_df is not None:
+            merge_cols = [subject_col] + missing_cols
+            temp = participant_df[merge_cols].copy()
+            df = df.merge(temp, left_on=subject_col, right_on=subject_col, how='left')
+    
+    # Merge X variable if needed
+    if xname not in df.columns and participant_df is not None:
+        if xname in participant_df.columns:
+            temp = participant_df[[subject_col, xname]].copy()
+            df = df.merge(temp, left_on=subject_col, right_on=subject_col, how='left')
+    
+    if len(region_order) == 0:
+        region_order = sorted(df[region_col].unique())
+    
+    rows = []
+    for reg in region_order:
+        df_reg = df[df[region_col] == reg].copy()
+        
+        # Determine required columns
+        cols_needed = [xname, yname]
+        if covariates is not None and covariates != [None]:
+            cols_needed.extend(covariates)
+        
+        # Drop missing values
+        df_reg = df_reg.dropna(subset=cols_needed)
+        
+        if len(df_reg) < 3:
+            rows.append({
+                region_col: reg,
+                'rho': np.nan,
+                'p': np.nan,
+                'n': len(df_reg)
+            })
+            continue
+        
+        try:
+            # Use Pingouin's partial_corr
+            if covariates is None or covariates == [None] or len(covariates) == 0:
+                # Simple correlation (no covariates)
+                result = pg.corr(df_reg[xname], df_reg[yname], method=method)
+                rho = result['r'].values[0]
+                pval = result['p-val'].values[0]
+                n = result['n'].values[0]
+            else:
+                # Partial correlation
+                result = pg.partial_corr(
+                    data=df_reg,
+                    x=xname,
+                    y=yname,
+                    covar=covariates,
+                    method=method
+                )
+                rho = result['r'].values[0]
+                pval = result['p-val'].values[0]
+                n = result['n'].values[0]
+            
+            rows.append({
+                region_col: reg,
+                'rho': rho,
+                'p': pval,
+                'n': int(n)
+            })
+            
+        except Exception as e:
+            print(f"Warning: Partial correlation failed for region {reg}: {e}")
+            rows.append({
+                region_col: reg,
+                'rho': np.nan,
+                'p': np.nan,
+                'n': len(df_reg)
+            })
+    
+    results_df = pd.DataFrame(rows)
+    
+    # Apply FDR correction
+    if results_df.shape[0] > 0:
+        valid_pvals = results_df['p'].notna()
+        if valid_pvals.sum() > 0:
+            reject, pvals_fdr, _, _ = multipletests(
+                results_df.loc[valid_pvals, 'p'].values,
+                alpha=alpha,
+                method=fdr_method
+            )
+            results_df.loc[valid_pvals, 'p_fdr'] = pvals_fdr
+            results_df.loc[valid_pvals, 'sig_fdr'] = reject
+        else:
+            results_df['p_fdr'] = np.nan
+            results_df['sig_fdr'] = False
+    
+    return results_df

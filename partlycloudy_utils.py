@@ -15,7 +15,7 @@ from nilearn.maskers import NiftiMasker
 
 def determine_intersecting_subjects(subject_filter='all'):
     if subject_filter=='all' or subject_filter == '0': 
-    	return get_intersecting_subjects()
+        return get_intersecting_subjects()
     par_df = pd.read_csv(f'{PC_PARTICIPANT_DF}')
     participants = par_df[par_df['AgeGroupV2']==subject_filter]['participant_id'].values
     participants=participants[participants!='sub-pixar053']
@@ -85,7 +85,7 @@ def load_atlas(atlas_name='Schaefer'):
     return atlas_image, atlas_df
 
 def load_ide_isc_atlas_df():
-    df = pd.read_csv(f'{get_results_dir()}/parcelwise_results_ISC_IDE.csv',index_col=0)
+    df = pd.read_csv(f'{get_results_dir()}/parcelwise_results_ISC_IDE.csv')
     return df
 
 def get_subject_age(subject_id):
@@ -216,3 +216,6 @@ def get_metric_atlas_df_subject(subject, task, metric, file_idx=0, filter_by_age
         dirname = f'{dirname}/IDE/LOSO_parcel/results/'
         f = sorted(glob.glob(f'{dirname}/{subject}_{task.lower()}*_all_IDE_results.csv'))[0]
     return pd.read_csv(f,index_col=0)
+
+def load_participant_df():
+    return pd.read_csv(PC_PARTICIPANT_DF)

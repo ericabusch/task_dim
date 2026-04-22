@@ -10,7 +10,7 @@ import ide_helpers as ide
 from scipy import stats
 from nilearn import plotting
 from nilearn.maskers import NiftiMasker, NiftiLabelsMasker
-from stats_helper import timeseries_correlation_permutation
+from task_dim.stats_helpers import timeseries_correlation_permutation
 from nilearn.image import math_img, index_img
 
 def load_atlas(atlas_name='Schaefer'):
