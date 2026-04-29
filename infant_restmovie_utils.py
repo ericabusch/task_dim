@@ -43,6 +43,19 @@ def load_ide_isc_atlas_df():
 
 def get_subject_age(subject_id, task='sleep'):
     par_df = pd.read_csv(f'{INFANT_PARTICIPANT_DATA[task]}')
+
+    if 'milgram' not in INFANT_PARTICIPANT_DATA[task]:
+        age = par_df[(par_df['task']==task) & (par_df['subject_id']==subject_id)]['age']        
+        if len(age)==1: 
+            age=age.item()
+        else:
+            try: 
+                age=age.values[0]
+            except:
+                print(f'{subject_id},{task} DNE')
+                return np.nan
+        return age
+       
     age = par_df[par_df['ppt']==subject_id]['age']
     if len(age)==1: 
         age=age.item()

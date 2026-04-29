@@ -9,9 +9,17 @@ VERBOSE=True
 if 'milgram' in os.uname()[1]:
     ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
     SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
+    INFANT_PARTICIPANT_DATA = {'sleep':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Sleep/infant_sleep_participants.csv',
+ 'aeronaut':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Aeronaut/infant_aeronaut_participants.csv',
+ 'mickey':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Mickey/infant_mickey_participants.csv'
+ }
+
 else:
     ROOT = '/gpfs/radev/home/elb77/project/task_dim'
     SCRATCH_DIR = f'/gpfs/radev/scratch60/turk-browne/elb77/task_dim_sandbox'
+    INFANT_PARTICIPANT_DATA = {'sleep':'/gpfs/radev/project/turk-browne/elb77/task_dim/task_dim/infant_restmovie/participant_info.csv',
+                               'aeronaut':'/gpfs/radev/project/turk-browne/elb77/task_dim/task_dim/infant_restmovie/participant_info.csv',
+                               'mickey':'/gpfs/radev/project/turk-browne/elb77/task_dim/task_dim/infant_restmovie/participant_info.csv'}
 
 KNN=5
 THRESHOLD=0.9
@@ -81,7 +89,4 @@ MICKEY_INFANT_SUBJECTS = ['s0307_1','s0307_2','s0687_1','s1187_1','s2307_1','s26
 's5187_1','s5687_1','s6607_1','s6687_1','s8187_1','s8607_1','s8687_1']
 AERO_INFANT_SUBJECTS = ['s0057_1','s0607_1','s0687_1','s1607_1','s2037_1','s2047_1','s2057_1','s2067_1','s2097_1','s2687_1','s3097_1','s3607_1','s4047_1','s4607_1','s5037_1','s6017_1',
 's6057_1','s6607_1','s6687_1','s6687_1','s7017_1','s7057_1','s7067_1','s8037_1','s8077_1','s8687_1','s8687_2','s9057_1']
-INFANT_PARTICIPANT_DATA = {'sleep':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Sleep/infant_sleep_participants.csv',
- 'aeronaut':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Aeronaut/infant_aeronaut_participants.csv',
- 'mickey':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Mickey/infant_mickey_participants.csv'
- }
+
