@@ -267,7 +267,7 @@ def paired_difference_ttest(arr1, arr2, alpha=0.05, alternative='greater'):
 
     return mean_diff, pvals, sig_mask
 
-def paired_difference_null_distribution(arr1, arr2, alpha=0.05, n_perm=1000, random_state=None, alternative='greater'):
+def paired_difference_null_distribution(arr1, arr2, alpha=0.05, n_perm=1000, random_state=None, alternative='two-sided'):
     """
     Compute within-sample differences, test if difference > 0 using a permutation test,
     and apply Benjamini-Hochberg FDR correction.
@@ -292,6 +292,9 @@ def paired_difference_null_distribution(arr1, arr2, alpha=0.05, n_perm=1000, ran
     sig_mask : np.ndarray, shape (M,)
         Boolean array, True if FDR-corrected p < alpha.
     """
+    if arr2 is None:
+        #assume arr2 is a zero array of the same shape as arr1
+        arr2 = np.zeros_like(arr1)
     rng = np.random.default_rng(random_state)
     arr1 = np.asarray(arr1)
     arr2 = np.asarray(arr2)
@@ -319,9 +322,8 @@ def paired_difference_null_distribution(arr1, arr2, alpha=0.05, n_perm=1000, ran
             raise ValueError("alternative must be 'greater', 'less', or 'two-sided'")
 
     reject, pvals_corr, _, _ = multipletests(pvals, alpha=alpha, method='fdr_bh')
-    sig_mask = reject
 
-    return mean_diff, pvals, sig_mask
+    return mean_diff, pvals, reject
 
 def permute_pattern(data0, data1, n_permutations=1000, random_state=None, corr_func=spearmanr):
     """Generate spatially permuted versions of a pattern.
@@ -353,60 +355,44 @@ def permute_pattern(data0, data1, n_permutations=1000, random_state=None, corr_f
     zscored = (true_correlation - np.mean(null_correlations)) / np.std(null_correlations)
     return p_value, true_correlation, zscored
 
-def paired_difference_resampling_distribution(arr1, arr2, alpha=0.05, n_perm=1000, random_state=None, alternative='greater'):
+
+def within_subject_spearman(df, x_col='delta_ID', y_col='ISC', subject_col='subject_id',
+                             n_permutations=1000, random_state=None, extra_cols=None):
+    """Compute within-subject Spearman correlation between two parcel-level measures.
+
+    For each subject, correlates x_col vs y_col across parcels using a permutation
+    test (see permute_pattern). Returns one row per subject with rho, p-value, and
+    z-score.
+
+    Args:
+        df: Long-format DataFrame with one row per subject × parcel.
+        x_col: Column name for the first measure (e.g. 'delta_ID').
+        y_col: Column name for the second measure (e.g. 'ISC').
+        subject_col: Column identifying subjects.
+        n_permutations: Number of permutations for the null distribution.
+        random_state: Optional random seed.
+        extra_cols: List of subject-level columns to carry into the output
+            (e.g. ['age', 'dataset']). Values are taken from the first row per subject.
+
+    Returns:
+        pd.DataFrame with columns: subject_col, 'rho', 'pval', 'zscore',
+        plus any extra_cols.
     """
-    Compute within-sample differences, test if difference > 0 using a resampling test,
-    and apply Benjamini-Hochberg FDR correction.
-
-    Parameters
-    ----------
-    arr1, arr2 : np.ndarray, shape (N, M)
-        Paired data arrays (N samples, M features).
-    alpha : float
-        FDR threshold for significance.
-    n_perm : int
-        Number of permutations.
-    random_state : int or None
-        Seed for reproducibility.
-
-    Returns
-    -------
-    mean_diff : np.ndarray, shape (M,)
-        Mean difference (arr1 - arr2) for each feature.
-    pvals : np.ndarray, shape (M,)
-        P-values from resampling test for each feature.
-    sig_mask : np.ndarray, shape (M,)
-        Boolean array, True if FDR-corrected p < alpha.
-    """
-    rng = np.random.default_rng(random_state)
-    arr1 = np.asarray(arr1)
-    arr2 = np.asarray(arr2)
-    assert arr1.shape == arr2.shape, "Arrays must have the same shape"
-    N, M = arr1.shape
-
-    diffs = arr1 - arr2
-    mean_diff = np.mean(diffs, axis=0)
-    pvals = np.zeros(M)
-
-    for i in range(M):
-        observed = mean_diff[i]
-        # Resampling: randomly sample with replacement from the differences
-        perm_diffs = np.empty(n_perm)
-        for p in range(n_perm):
-            sampled_diffs = rng.choice(diffs[:, i], size=N, replace=True)
-            perm_diffs[p] = np.mean(sampled_diffs)
-        if alternative == 'greater':
-            pvals[i] = (np.sum(perm_diffs >= observed) + 1) / (n_perm + 1)
-        elif alternative == 'less':
-            pvals[i] = (np.sum(perm_diffs <= observed) + 1) / (n_perm + 1)
-        elif alternative == 'two-sided':
-            pvals[i] = (np.sum(np.abs(perm_diffs) >= np.abs(observed)) + 1) / (n_perm + 1)
-        else:
-            raise ValueError("alternative must be 'greater', 'less', or 'two-sided'")
-
-    reject, pvals_corr, _, _ = multipletests(pvals, alpha=alpha, method='fdr_bh')
-    sig_mask = reject
-    return mean_diff, pvals_corr, sig_mask
+    extra_cols = extra_cols or []
+    records = []
+    for subject, grp in df.groupby(subject_col):
+        grp = grp.dropna(subset=[x_col, y_col])
+        if len(grp) < 10:
+            continue
+        pval, rho, zscore = permute_pattern(
+            grp[x_col].values, grp[y_col].values,
+            n_permutations=n_permutations, random_state=random_state
+        )
+        row = {subject_col: subject, 'rho': rho, 'pval': pval, 'zscore': zscore}
+        for col in extra_cols:
+            row[col] = grp[col].iloc[0]
+        records.append(row)
+    return pd.DataFrame(records)
 
 def false_discovery_control(ps, *, axis=0, method='bh'):
     """Adjust p-values to control the false discovery rate.
@@ -515,7 +501,7 @@ def false_discovery_control(ps, *, axis=0, method='bh'):
 
 def parcelwise_regression(score_df, xname, yname='score', covariates=None, formula=None, 
                          region_col='region_name', region_order=[], 
-                         alpha=0.05, fdr_method='fdr_bh'):
+                         alpha=0.05, fdr_method='fdr_bh', lme=False):
     """
     Perform linear regression for each parcel/region and return coef, t, p for
     every predictor (including covariates). Perform multiple-comparison (FDR)
@@ -555,11 +541,16 @@ def parcelwise_regression(score_df, xname, yname='score', covariates=None, formu
 
     for reg in region_order:
         df_reg = df[df[region_col] == reg].copy().reset_index(drop=True)
-        try:
-            # Fit model; let patsy handle missing values automatically
+        if lme:
+            #remove all whitespace in formula to simplify parsing
+            formula = formula.replace(' ', '')
+            grouping = formula.split("+(1|")[1].replace(')','')
+            revised_formula = formula.split("+(1|")[0].strip()
+            model = smf.mixedlm(revised_formula, data=df_reg, groups=df_reg[grouping]).fit()
+        else:
             model = smf.ols(formula, data=df_reg).fit()
-
-            entry = {region_col: reg, 'r2': model.rsquared, 'n': int(model.nobs)}
+        try:
+            entry = {region_col: reg, 'n': int(model.nobs)}
             # For each parameter in the fitted model (except Intercept) record coef/t/p
             for param in model.params.index:
                 if param == 'Intercept':

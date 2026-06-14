@@ -1,11 +1,22 @@
 # cneuromod config
 import numpy as np
 from os.path import join
+import os
 
 NJOBS=16
 VERBOSE=True
-ROOT = '/gpfs/milgram/project/turk-browne/users/elb77'
-SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
+
+# check if running on milgram, radev/grace, or local
+if 'milgram' in os.uname()[1]:
+    ROOT = '/gpfs/milgram/project/turk-browne/users/elb77'
+    SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
+elif os.path.exists('/gpfs/radev'):
+    ROOT = '/gpfs/radev/home/elb77/project/task_dim'
+    SCRATCH_DIR = '/gpfs/radev/scratch60/turk-browne/elb77/task_dim_sandbox'
+else:
+    _repo_dir = os.path.dirname(os.path.abspath(__file__))
+    ROOT = os.path.dirname(_repo_dir)
+    SCRATCH_DIR = os.path.join(_repo_dir, 'scratch')
 KNN=5
 THRESHOLD=0.9
 IDE_METHODS = ['TPHATE_DiffOp_IDE','PHATE_DiffOp_IDE', 'MiND_ML','PCA','MLE','lPCA']

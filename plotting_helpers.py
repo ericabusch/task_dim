@@ -20,6 +20,61 @@ from obspy.imaging.cm import viridis_white, viridis_white_r
 import matplotlib
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
+ISC_CMAP = "OrRd"
+ID_CMAP = "Blues"
+
+def dataset_colors(dataset):
+	color_dict = {'adult_restmovie': "#A2285F",
+			   'infant_restmovie':"#E99DB6",
+			   'partlycloudy':'#F5F1A0',
+			   'hbn':"#8BAED6",
+			   'narratives':"#E7865F"}
+	# Return the color for the given dataset, or a default color if not found
+	if dataset == 'all':
+		return color_dict
+	return color_dict[dataset]
+
+def custom_blues_cmap():
+	colors=[ "#FFFFFF",    # white
+    "#F4FBF8",    # whisper mint
+    "#EEF8F4",    # near white mint
+    "#E0F2EC",    # very pale mint
+    "#D4EEE8",    # pale mint
+    "#C0E6DE",    # light mint-teal
+    "#B0E0D8",    # light teal
+    "#98D8D0",    # soft-mid teal
+    "#84D0C8",    # soft teal
+    "#68C8C0",    # clear teal
+    "#50BCBA",    # mid teal
+    "#36B0B4",    # mid-deep teal
+    "#1EA4B0",    # deep teal
+    "#1094AC",    # teal shifting blue
+    "#1088A8",    # teal-blue
+    "#1278A6",    # cool teal-blue
+    "#186CA4",    # steel blue
+    "#1E60A4",    # mid steel blue
+    "#2454A2",    # mid blue
+    "#2C48A2",    # blue deepening
+    "#343CA0",    # blue-purple
+    "#3C32A0",    # blue-purple shift
+    "#40289C",    # purple-blue
+    "#3E2094",    # deep purple-blue
+    "#341888",    # deep purple
+    "#2C1278",    # purple-indigo
+    "#220A6C",    # dark indigo
+    "#180660",    # deeper indigo
+    "#100248",    # near-black indigo
+]
+	cmap = LinearSegmentedColormap.from_list("custom_blues_hex", colors)  
+	return cmap
+
+def get_schaefer_network(region_name):
+    """Return the Yeo network label from a Schaefer region name.
+
+    Works for both 7- and 17-network parcellations.
+    Example: '17Networks_LH_DefaultA_PFCdPF_1' -> 'DefaultA'
+    """
+    return region_name.split('_')[2]
 
 def get_asterisks_pvalue(pvalue):
 	if pvalue < 0.001:
@@ -64,14 +119,18 @@ def diverging_colormap_bp():
     """
     # Hex codes for the colors
     colors = [
-        "#0C83AA",  
-        "#30DCFF",
-        "#B3FAFF",  # turquoise
+        "#220A6C",  
+        "#2454A2",
+        "#1088A8",  # turquoise
+		"#68C8C0",
+		'#D4EEE8',
         "#FFFFFF",  # white
+		"#FFDEFA",
         "#FCA6EF",  
-        "#D44197",
+        "#E856AB",
+		"#BF187A",
         "#78104B"   
-    ]
+    ][::-1]
     colormap = LinearSegmentedColormap.from_list("custom_diverging_hex", colors)
     return colormap
 
@@ -523,7 +582,8 @@ def expand_parcellation_to_volume(data_arr, atlas_img):
     
     return nib.Nifti1Image(vol_data, atlas_img.affine, atlas_img.header)
 
-def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type='fslr', map_type='inflated', target_density='32k', include_cbar=False, title=None,method='nearest', threshold=None, mask_medial_wall=True,
+def generate_surface_plot(data_fn, image_fn, atlas, cmap, cbar_range, surf_type='fslr', map_type='inflated', target_density='32k', 
+						  include_cbar=False, title=None,method='nearest', threshold=None, mask_medial_wall=True,
 						 alpha=1, label=None, layers_kwargs=None):
 	"""Generate and save surface plots from data arrays.
 
@@ -1044,6 +1104,9 @@ def compile_surface_plots_to_grid_by_rows(
 	if main_title:
 		plt.suptitle(main_title, fontsize=40, y=0.98)
 
+	plt.subplots_adjust(left=0.03, right=0.88, top=0.92, bottom=0.05, wspace=0.05, hspace=0.05)
+	fig.canvas.draw()
+
 	# Add one colorbar per row. Determine the vertical span of axes in each row.
 	for row_idx in range(n_rows):
 		# collect axes for this row (some may be missing if fewer images)
@@ -1052,19 +1115,25 @@ def compile_surface_plots_to_grid_by_rows(
 		if start >= n_imgs:
 			continue  # empty row
 		row_axes = [axes_list[i] for i in range(start, end)]
-		# Determine bottom and top in figure coordinates
+
+		# Determine bottom and top in figure coordinates (post-subplots_adjust)
 		bottoms = [ax.get_position().y0 for ax in row_axes]
 		tops = [ax.get_position().y1 for ax in row_axes]
-		bottoms_valid = bottoms if len(bottoms) > 0 else [0.1]
+		bottoms_valid = bottoms if len(bottoms) > 0 else [0.2]
 		tops_valid = tops if len(tops) > 0 else [0.9]
 		bottom = min(bottoms_valid)
 		top = max(tops_valid)
-		height = top - bottom
+
+		# Center colorbar at the vertical midpoint of the row
+		center = (bottom + top) / 2
+		cbar_height = (top - bottom) * 0.6
+		cbar_bottom = center - cbar_height / 2
+
 		# place colorbar slightly to the right of the rightmost axis in the row
 		right_positions = [ax.get_position().x1 for ax in row_axes]
 		rightmost = max(right_positions)
-		cbar_x = rightmost + 0.01
-		cbar_width = 0.02
+		cbar_x = rightmost + 0.015
+		cbar_width = 0.015
 
 		cmap_row = cmaps_per_row[row_idx]
 		cbar_range_row = cbar_ranges_per_row[row_idx]
@@ -1074,19 +1143,17 @@ def compile_surface_plots_to_grid_by_rows(
 		sm = plt.cm.ScalarMappable(cmap=plt.get_cmap(cmap_row), norm=norm)
 		sm.set_array([])
 
-		# Add axes in figure coords
-		cax = fig.add_axes([cbar_x, bottom, cbar_width, height])
+		# Add axes in figure coords, centered at row midpoint
+		cax = fig.add_axes([cbar_x, cbar_bottom, cbar_width, cbar_height])
 		cbar = plt.colorbar(sm, cax=cax, orientation='vertical')
-		cbar.set_label(cbar_label_row, fontsize=24)
-		cbar.ax.tick_params(labelsize=20)
-
-	plt.subplots_adjust(left=0.03, right=0.92, top=0.92, bottom=0.05, wspace=0.05, hspace=0.05)
+		cbar.set_label(cbar_label_row, fontsize=28)
+		cbar.ax.tick_params(labelsize=28)
 	plt.savefig(output_path, bbox_inches='tight', dpi=300, transparent=True, format='pdf')
 	print(f"Compiled surface plots into grid (by rows): {output_path}")
 	plt.close(fig)
 	return output_path
 
-def determine_colorbar_range(vals, cmap=None):
+def determine_colorbar_range(vals, cmap=None, symmetric=False):
 	# Get global min/max for color scaling
 	vmin = np.nanmin(vals)
 	vmax = np.nanmax(vals)
@@ -1094,7 +1161,7 @@ def determine_colorbar_range(vals, cmap=None):
 	vmin_rounded = np.floor(vmin * 10) / 10
 	vmax_rounded = np.ceil(vmax * 10) / 10
 	# If zero is between these, adjust to be symmetric
-	if vmin_rounded < 0 < vmax_rounded:
+	if vmin_rounded < 0 < vmax_rounded or symmetric:
 		abs_max = max(abs(vmin_rounded), abs(vmax_rounded))
 		vmin_rounded = -abs_max
 		vmax_rounded = abs_max

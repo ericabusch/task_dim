@@ -7,13 +7,17 @@ import pandas as pd
 NJOBS=16
 VERBOSE=True
 
-# check if running on milgram or misha
+# check if running on milgram, radev/grace, or local
 if 'milgram' in os.uname()[1]:
     ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
     SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
-else:
+elif os.path.exists('/gpfs/radev'):
     ROOT = '/gpfs/radev/home/elb77/project/task_dim'
-    SCRATCH_DIR = f'/gpfs/radev/scratch60/turk-browne/elb77/task_dim_sandbox'
+    SCRATCH_DIR = '/gpfs/radev/scratch60/turk-browne/elb77/task_dim_sandbox'
+else:
+    _repo_dir = os.path.dirname(os.path.abspath(__file__))
+    ROOT = os.path.dirname(_repo_dir)
+    SCRATCH_DIR = os.path.join(_repo_dir, 'scratch')
 
 TR = 1.450
 KNN=10
@@ -35,3 +39,4 @@ BASIC_PARTICIPANT_DF =  f'{HBN_OUTDIR}/basic_cohort_info.csv'
 #HBN_PARTICIPANTS_ALL = pd.read_csv(BASIC_PARTICIPANT_DF).subject_id.values
 HBN_PARTICIPANT_FMRIPREP = f'{HBN_OUTDIR}/fmriprep_participants.txt'
 HBN_AGE_GROUPS=['U_08','U_09','U_10','U_11','U_12','U_13','U_14','U_15','U_16','U_17','U_22']
+HBN_AGE_GROUPS_COARSE=['U_08','U_09','U_10','U_11','U_12','U_13','U_14','U_15','U_16','U_17','18_plus']

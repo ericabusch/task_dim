@@ -5,7 +5,7 @@ import os
 NJOBS=16
 VERBOSE=True
 
-# check if running on milgram or misha
+# check if running on milgram, radev/grace, or local
 if 'milgram' in os.uname()[1]:
     ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
     SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
@@ -13,13 +13,18 @@ if 'milgram' in os.uname()[1]:
  'aeronaut':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Aeronaut/infant_aeronaut_participants.csv',
  'mickey':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Mickey/infant_mickey_participants.csv'
  }
-
-else:
+elif os.path.exists('/gpfs/radev'):
     ROOT = '/gpfs/radev/home/elb77/project/task_dim'
-    SCRATCH_DIR = f'/gpfs/radev/scratch60/turk-browne/elb77/task_dim_sandbox'
+    SCRATCH_DIR = '/gpfs/radev/scratch60/turk-browne/elb77/task_dim_sandbox'
     INFANT_PARTICIPANT_DATA = {'sleep':'/gpfs/radev/project/turk-browne/elb77/task_dim/task_dim/infant_restmovie/participant_info.csv',
                                'aeronaut':'/gpfs/radev/project/turk-browne/elb77/task_dim/task_dim/infant_restmovie/participant_info.csv',
                                'mickey':'/gpfs/radev/project/turk-browne/elb77/task_dim/task_dim/infant_restmovie/participant_info.csv'}
+else:
+    _repo_dir = os.path.dirname(os.path.abspath(__file__))
+    ROOT = os.path.dirname(_repo_dir)
+    SCRATCH_DIR = os.path.join(_repo_dir, 'scratch')
+    INFANT_PARTICIPANT_DATA = {t: os.path.join(_repo_dir, 'infant_restmovie', 'participant_info.csv')
+                               for t in ['sleep', 'aeronaut', 'mickey']}
 
 KNN=5
 THRESHOLD=0.9

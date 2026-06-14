@@ -23,7 +23,7 @@ def clean_difference_dataframe(dataframe):
         raise RuntimeError(f"Could not find both movie and rest tasks rows. found tasks: {tasks}")
 
     # pivot so each row = subject x region, columns for rest and movie scores
-    pivot = dataframe.pivot_table(index=['subject', 'region_name'], columns='task', values='score').reset_index()
+    pivot = dataframe.pivot_table(index=['subject_id', 'region_name'], columns='task', values='score').reset_index()
 
     # ensure expected columns exist
     pivot = pivot.rename(columns={movie_task: 'movie_score', rest_task: 'rest_score'})
@@ -31,10 +31,14 @@ def clean_difference_dataframe(dataframe):
     # keep only rows with both scores and compute difference (rest - movie)
     pivot = pivot.dropna(subset=['movie_score', 'rest_score']).copy()
     pivot['RestMovieDiff'] = pivot['rest_score'] - pivot['movie_score']
+    
+    # Add back in the movie ISC score for each parcel
+     
+
     # Add back in age, motion columns
-    temp = dataframe[['subject', 'Age','AgeGroup', 'movie_FD', 'rest_FD','sex','session']].drop_duplicates()
-    pivot = pivot.merge(temp, on='subject', how='inner')
-    return pivot[['subject', 'region_name', 'rest_score', 'movie_score','AgeGroup', 'RestMovieDiff', 'movie_FD', 'rest_FD', 'Age','sex','session']]
+    temp = dataframe[['subject_id', 'Age','AgeGroup', 'movie_FD', 'rest_FD','sex','session']].drop_duplicates()
+    pivot = pivot.merge(temp, on='subject_id', how='inner')
+    return pivot[['subject_id', 'region_name', 'rest_score', 'movie_score','AgeGroup', 'RestMovieDiff', 'movie_FD', 'rest_FD', 'Age','sex','session']]
 
 
 def join_results_participant_info(results_df, participant_df, dataset):
@@ -43,13 +47,13 @@ def join_results_participant_info(results_df, participant_df, dataset):
         participant_df = participant_df[['subject_id','movie_FD','rest_FD','sex','session']]
         # rename columns to match
         participant_df = participant_df.rename(columns={'sex':'sex','session':'session',
-                                                        'subject_id':'subject', 'movie_FD':'movie_FD','rest_FD':'rest_FD'})
+                                                        'subject_id':'subject_id', 'movie_FD':'movie_FD','rest_FD':'rest_FD'})
     elif dataset == 'partlycloudy':
         participant_df = participant_df[['participant_id','mean_FD','Gender']]
         # rename columns to match
         participant_df = participant_df.rename(columns={'participant_id':'subject', 'Gender':'sex', 'mean_FD':'mean_FD'})
 
-    merged_df = results_df.merge(participant_df, on='subject', how='inner')
+    merged_df = results_df.merge(participant_df, on='subject_id', how='inner')
     return merged_df
 
 def run_simple_ide_isc_analyses(dataframe, output_directory, tasks, plot=0, verbose=1):
