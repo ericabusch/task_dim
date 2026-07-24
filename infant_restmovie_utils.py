@@ -6,7 +6,7 @@ from infant_restmovie_config import *
 import pandas as pd
 import seaborn as sns
 import matplotlib
-from nilearn.image import index_img
+from nilearn.image import index_img, math_img
 import numpy as np
 
 

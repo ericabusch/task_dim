@@ -62,7 +62,6 @@ def get_task_filenames(subject_list, task):
     '''
     this is useful for the script that makes intersect masks
     '''
-    data_dir = RM_DATA_DIRS[task.lower()]
     filenames = []
     for s in subject_list:
         f = sorted(glob.glob(RM_DATA_DIRS[task.lower()]+f'/{s}*{RM_STRING_MATCH}'))

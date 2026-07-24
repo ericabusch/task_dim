@@ -66,13 +66,16 @@ def run_subject_isc(test_subject, train_subjects, task, atlas_name='Schaefer', w
         train_roi_data = masker.fit_transform(train_nii)
         # filter missing values
         missing_masks = np.array([remove_missing(X) for X in [train_roi_data, test_roi_data]]) # where everyone's missing
-        mask = np.sum(missing_masks, axis=0) # sum across participants; will yield n_subj where all have the balue
+        mask = np.sum(missing_masks, axis=0) # sum across participants; will yield n_subj where all have the value
         mask = mask == len(missing_masks)
         if config.VERBOSE: print(f'including {np.sum(mask)} / {n_voxels}) for roi={roi_id}')
         # now filter every volume with the mask
         train_roi_data = np.squeeze(train_roi_data[:,mask]) 
         test_roi_data = np.squeeze(test_roi_data[:,mask])
         if RUN_STATS:
+            # Rolls the timeseries of the test data by a random amount and computes the correlation with the training data, repeated n_permute times to generate a null distribution. 
+            # The p-value is computed based on this null distribution.
+            # this is expensive and not always done, so only run if requested
             metric = ISC_METRIC# bcvar[0] if len(bcvar) > 0 else 'pearson'
             these_stats = timeseries_correlation_permutation(test_roi_data, train_roi_data, method='time_shift', n_permute=1000, metric=metric, tail='two-tailed', n_jobs=-1, return_perms=False)
             r = these_stats['correlation']
@@ -113,13 +116,12 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--overwrite', type=int, default=1)
     parser.add_argument('-p', '--plot', type=int, default=1)
     p = parser.parse_args()
-    RUN_STATS=bool(p.run_stats)
+    RUN_STATS=bool(p.run_stats) 
+
     # import the right utils/config file
     if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
     elif p.dataset.lower() == 'adult_restmovie': import adult_restmovie_utils as utils; import adult_restmovie_config as config
-    elif p.dataset.lower() == 'camcan': import camcan_utils as utils; import camcan_config as config
     elif p.dataset.lower() == 'infant_restmovie': import infant_restmovie_utils as utils; import infant_restmovie_config as config; p.subject_filter=p.task
-    elif p.dataset.lower() == 'cneuromod': import cneurmod_utils as utils; import cneuromod_config as config
     elif p.dataset.lower() == 'partlycloudy': import partlycloudy_utils as utils; import partlycloudy_config as config
     elif p.dataset.lower() == 'hbn': import hbn_utils as utils; import hbn_config as config
     else: print(f'{p.dataset} not valid'); sys.exit(1)
@@ -138,7 +140,7 @@ if __name__ == '__main__':
     print(test_subject, train_subjects)
     if p.verbose: print(f'running subject {test_subject} of {len(train_subjects)} training subs')
     if p.dataset.lower() == 'hbn':
-        wb_mask=utils.get_intersect_mask(p.subject_filter, p.task)
+        wb_mask=utils.get_intersect_mask(p.subject_filter, p.task) # intersect mask for the HBN dataset is specific to the subject filter and task
         print(f'loaded WB Mask of shape {wb_mask.shape}')
     else:
         wb_mask=None

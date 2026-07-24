@@ -1,8 +1,7 @@
 '''
 figures out what subjects for what tasks go into what file list for intersect mask 
 '''
-import os, sys, glob, argparse
-# from bkup_dec24.config import *
+import sys, argparse
 
 
 def get_filenames(dataset, subject_list):
@@ -33,9 +32,7 @@ if __name__ == '__main__':
     # import the right utils file
     if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
     elif p.dataset.lower() == 'adult_restmovie': import adult_restmovie_utils as utils; import adult_restmovie_config as config
-    elif p.dataset.lower() == 'camcan': import camcan_utils as utils; import camcan_config as config
     elif p.dataset.lower() == 'infant_restmovie': import infant_restmovie_utils as utils; import infant_restmovie_config as config
-    elif p.dataset.lower() == 'cneuromod': import cneurmod_utils as utils; import cneuromod_config as config
     elif p.dataset.lower() == 'partlycloudy': import partlycloudy_utils as utils; import partlycloudy_config as config
     elif p.dataset.lower() == 'hbn': import hbn_utils as utils; import hbn_config as config
     else: print(f'{p.dataset} not valid'); sys.exit(1)
@@ -57,6 +54,7 @@ if __name__ == '__main__':
         out_filename = f'{utils.get_out_dir()}/files_for_intersect_mask.txt'
         if VERBOSE: print(f'writing {len(all_filenames)} names to {out_filename}')
         write_filelist(out_filename, all_filenames)
+
     else:
         tasks = utils.get_tasks()
         for t in tasks:

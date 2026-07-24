@@ -7,18 +7,18 @@ VERBOSE=True
 
 # check if running on milgram, radev/grace, or local
 if 'milgram' in os.uname()[1]:
-    ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
-    SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
-    INFANT_PARTICIPANT_DATA = {'sleep':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Sleep/infant_sleep_participants.csv',
- 'aeronaut':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Aeronaut/infant_aeronaut_participants.csv',
- 'mickey':'/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Mickey/infant_mickey_participants.csv'
+    ROOT = 'ROOT_PATH'
+    SCRATCH_DIR = 'SCRATCH_PATH/task_dim_sandbox'
+    INFANT_PARTICIPANT_DATA = {'sleep':f'{ROOT}/RestingState/Infant_Sleep/infant_sleep_participants.csv',
+ 'aeronaut':f'{ROOT}/RestingState/Infant_Aeronaut/infant_aeronaut_participants.csv',
+ 'mickey':f'{ROOT}/RestingState/Infant_Mickey/infant_mickey_participants.csv'
  }
 elif os.path.exists('/gpfs/radev'):
-    ROOT = '/gpfs/radev/home/elb77/project/task_dim'
-    SCRATCH_DIR = '/gpfs/radev/scratch60/turk-browne/elb77/task_dim_sandbox'
-    INFANT_PARTICIPANT_DATA = {'sleep':'/gpfs/radev/project/turk-browne/elb77/task_dim/task_dim/infant_restmovie/participant_info.csv',
-                               'aeronaut':'/gpfs/radev/project/turk-browne/elb77/task_dim/task_dim/infant_restmovie/participant_info.csv',
-                               'mickey':'/gpfs/radev/project/turk-browne/elb77/task_dim/task_dim/infant_restmovie/participant_info.csv'}
+    ROOT = 'ROOT_PATH'
+    SCRATCH_DIR = 'SCRATCH_PATH/task_dim_sandbox'
+    INFANT_PARTICIPANT_DATA = {'sleep':f'{ROOT}/infant_restmovie/participant_info.csv',
+                               'aeronaut':f'{ROOT}/infant_restmovie/participant_info.csv',
+                               'mickey':f'{ROOT}/infant_restmovie/participant_info.csv'}
 else:
     _repo_dir = os.path.dirname(os.path.abspath(__file__))
     ROOT = os.path.dirname(_repo_dir)
@@ -31,9 +31,10 @@ THRESHOLD=0.9
 IDE_METHODS = ['TPHATE_DiffOp_IDE','PHATE_DiffOp_IDE', 'MiND_ML','PCA','MLE','lPCA']
 DATASET_NAME='infant_restmovie'
 # 
-INFANT_SLEEP_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Sleep/preprocessed_standard/nonlinear_alignment/'
-AERONAUT_B_RM_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Aeronaut/preprocessed_standard/nonlinear_alignment/'
-MICKEY_B_RM_DIR='/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/RestingState/Infant_Mickey/preprocessed_standard/nonlinear_alignment/'
+DATA_DIR = 'PATH_TO_DATA'
+INFANT_SLEEP_DIR=f'{DATA_DIR}/RestingState/Infant_Sleep/preprocessed_standard/nonlinear_alignment/'
+AERONAUT_B_RM_DIR=f'{DATA_DIR}/RestingState/Infant_Aeronaut/preprocessed_standard/nonlinear_alignment/'
+MICKEY_B_RM_DIR=f'{DATA_DIR}/RestingState/Infant_Mickey/preprocessed_standard/nonlinear_alignment/'
 RM_INFANT_OUTDIR = f'{ROOT}/task_dim/infant_restmovie'
 RM_INFANT_DATA_DIRS={'sleep':INFANT_SLEEP_DIR, 'aeronaut':AERONAUT_B_RM_DIR, 'mickey':MICKEY_B_RM_DIR}
 RM_INFANT_STRING_MATCH={t:'*_fslmotion_thr0.2_Only.nii.gz' for t in RM_INFANT_DATA_DIRS.keys()}#'aeronaut':'Z','mickey':'Z'}
@@ -52,6 +53,7 @@ AERO_INFANT_RM_SUBSET_2 = ['s8687_1_3', 's8687_1_4', 's8687_1_5', 's8687_1_7', '
        's3097_1_1']
 MICKEY_INFANT_RM_SUBSET_2 =['s0307_2_1', 's0307_2_1', 's8187_1_8', 's2307_1_2', 's2307_1_2',
        's6687_1_1', 's8687_1_2', 's0687_1_2']
+
 RM_INFANT_OVERLAPPING_SUBJECTS = {'mickey_sleep': ['s8187_1','s2307_1'], 
 'aeronaut_sleep':['s8687_2','s2057_1','s6057_1','s3097_1'], 
 'aeronaut_mickey':['s6687_1','s8687_1']}
@@ -72,26 +74,8 @@ RM_INFANT_MULTIPLE_FILES = {"sleep": {"s2986_1":4, "s3097_1":2, "s6057_1":4, "s7
 "mickey": {"s0307_2":2, "s2307_1":2},
 'aeronaut':{'s1607_1':2, 's6057_1':2, "s6687_1":4, "s7017_1":2, "s8687_1":4}}
 
-
-
-INFANT_AERO_DIR = '/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Aeronaut/preprocessed_standard/nonlinear_alignment/'
-INFANT_MICKEY_DIR = '/gpfs/milgram/project/turk-browne/projects/dev_neuropipe/data/Movies/Mickey/preprocessed_standard/nonlinear_alignment/'
-
-
-
 # this is without the session number per infant
 SLEEP_INFANT_SUBJECTS = ["s0307_1", "s2057_1","s2067_1","s2097_1","s2307_1","s2986_1","s2986_1","s3097_1", "s4107_1", "s5927_1", "s6057_1", "s6057_1", "s7286_2", "s8187_1", "s8687_2", "s9986_1"]
 # the ones that were only included in the RM dataset -- use these subjects
 AERO_INFANT_RM_SUBSET= ["s0057_1", "s0607_1", "s1607_1", "s2037_1", "s2057_1", "s3097_1", "s3607_1", "s4047_1", "s4607_1", "s5037_1","s6057_1","s6607_1","s6687_1","s7017_1","s7067_1","s8037_1","s8687_1"]
 MICKEY_INFANT_RM_SUBSET=["s0307_2","s2307_1","s6687_1","s8187_1","s8687_1"]
-
-
-
-
-
-# This is the full dataset -- dont use!
-MICKEY_INFANT_SUBJECTS = ['s0307_1','s0307_2','s0687_1','s1187_1','s2307_1','s2687_1',
-'s5187_1','s5687_1','s6607_1','s6687_1','s8187_1','s8607_1','s8687_1']
-AERO_INFANT_SUBJECTS = ['s0057_1','s0607_1','s0687_1','s1607_1','s2037_1','s2047_1','s2057_1','s2067_1','s2097_1','s2687_1','s3097_1','s3607_1','s4047_1','s4607_1','s5037_1','s6017_1',
-'s6057_1','s6607_1','s6687_1','s6687_1','s7017_1','s7057_1','s7067_1','s8037_1','s8077_1','s8687_1','s8687_2','s9057_1']
-

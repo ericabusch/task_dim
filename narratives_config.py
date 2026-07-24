@@ -5,24 +5,26 @@ NJOBS=16
 VERBOSE=True
 
 # check if running on milgram, radev/grace, or local
+# check if running on milgram, misha, or local
 if 'milgram' in os.uname()[1]:
-    ROOT = '/gpfs/milgram/project/turk-browne/users/elb77/'
-    SCRATCH_DIR = '/gpfs/milgram/scratch60/turk-browne/elb77/task_dim_sandbox'
+    ROOT = 'ROOTPATH' # keep cluster paths private
+    SCRATCH_DIR = f'SCRATCHPATH/task_dim_sandbox'
 elif os.path.exists('/gpfs/radev'):
-    ROOT = '/gpfs/radev/home/elb77/project/task_dim'
-    SCRATCH_DIR = '/gpfs/radev/scratch60/turk-browne/elb77/task_dim_sandbox'
+    ROOT = 'ROOTPATH'
+    SCRATCH_DIR = f'SCRATCHPATH/task_dim_sandbox'
 else:
     _repo_dir = os.path.dirname(os.path.abspath(__file__))
     ROOT = os.path.dirname(_repo_dir)
     SCRATCH_DIR = os.path.join(_repo_dir, 'scratch')
 
-KNN=10
+
+KNN=5
 THRESHOLD=0.9
 IDE_METHODS = ['TPHATE_DiffOp_IDE','PCA']
 
 ### CONFIG INFO FOR NARRATIVES ##
-BASE_DIR_NARRATIVES = '/gpfs/milgram/project/turk-browne/projects/Narratives'
-NARRATIVES_DATALAD_DIR='/gpfs/milgram/scratch60/turk-browne/elb77/Narratives/narratives'
+BASE_DIR_NARRATIVES = f'{ROOT}/Narratives'
+NARRATIVES_DATALAD_DIR=f'{SCRATCH_DIR}/Narratives/narratives'
 NARRATIVES_DATA_DIRS = {'black':join(BASE_DIR_NARRATIVES, 'black'),
                         'piemanpni':join(BASE_DIR_NARRATIVES, 'piemanpni'), 
                         'bronx':join(BASE_DIR_NARRATIVES, 'bronx'),

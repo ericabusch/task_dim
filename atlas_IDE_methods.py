@@ -22,13 +22,6 @@ def load_atlas(atlas_name='Schaefer'):
         print(f'{atlas_name} not implemented')
     return atlas_image, atlas_df
 
-def remove_missing(X, missing=0):
-    threshold = X.shape[0] // 20 # 5% are 0
-    n_missing = np.sum(X==missing, axis=0)
-    mask = n_missing <= threshold
-    filtered_X = X[:,mask]
-    return filtered_X
-
 def check_empty_features(arr, threshold):
     """
     Returns True if the number of features (columns) where all samples are zero
@@ -50,6 +43,9 @@ def check_empty_features(arr, threshold):
     return zero_features > threshold
 
 def run_subject_ide(sub_id, task, file_idx=0, atlas_name='Schaefer'): 
+    '''
+    run IDE methods on a single subject's data, parcel by parcel, and return results as a dataframe and a dictionary of volumes for each method
+    '''
     atlas_image, atlas_df = load_atlas(atlas_name)
     nii = utils.get_subject_data(sub_id, task, trim=False, file_idx=file_idx)
     print(f"Original shape: {nii.shape}")
@@ -128,9 +124,7 @@ if __name__ == '__main__':
     # import the right utils/config file
     if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
     elif p.dataset.lower() == 'adult_restmovie': import adult_restmovie_utils as utils; import adult_restmovie_config as config
-    elif p.dataset.lower() == 'camcan': import camcan_utils as utils; import camcan_config as config
     elif p.dataset.lower() == 'infant_restmovie': import infant_restmovie_utils as utils; import infant_restmovie_config as config; p.subject_filter=p.task
-    elif p.dataset.lower() == 'cneuromod': import cneuromod_utils as utils; import cneuromod_config as config
     elif p.dataset.lower() == 'partlycloudy': import partlycloudy_utils as utils; import partlycloudy_config as config
     elif p.dataset.lower() == 'hbn': import hbn_utils as utils; import hbn_config as config
     else: print(f'{p.dataset} not valid'); sys.exit(1)
@@ -139,15 +133,14 @@ if __name__ == '__main__':
     VERBOSE=config.VERBOSE
     KNN=config.KNN
     THRESHOLD=config.THRESHOLD
-    MIN_ACTIVE_PROPORTION=0.5
+    MIN_ACTIVE_PROPORTION=0.5 # make sure at least 50% of voxels in a parcel are active (non-zero) before running IDE
     METHODS_TO_RUN = config.IDE_METHODS
     METHODS_OUTPUT_LABELS = METHODS_TO_RUN  
-    NEED_GROUP=False
+    NEED_GROUP=False # only needed for ISC, where the comparisons are across group
 
-     # load target subject
+    # load target subject
     ALL_SUBJECTS = utils.get_intersecting_subjects(subject_filter=p.subject_filter)
     print(f'loaded a total of {len(ALL_SUBJECTS)} subjects')
-    
     # make sure the desired subject exists
     if len(ALL_SUBJECTS) < p.subject_idx:
         print(f'test subject idx {p.subject_idx} not in list of len {len(ALL_SUBJECTS)}')
@@ -165,7 +158,7 @@ if __name__ == '__main__':
     os.makedirs(plot_outdir,exist_ok=True)
 
     outfn_base = os.path.join(results_outdir, f'{this_subject}_{p.task}_{p.atlas}')
-    if p.dataset.lower() in ['cneuromod','infant_restmovie']:
+    if p.dataset.lower() in ['infant_restmovie']: # there might be repeat scans for the infants
         outfn_base+=f'_file_idx_{p.file_idx}'
     
     if os.path.exists(outfn_base+'_all_IDE_results.csv') and p.overwrite == 0:

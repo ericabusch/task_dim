@@ -1,4 +1,4 @@
-# healthy brain
+# healthy brain network dataset
 import json, glob
 from os.path import join, exists
 import os
@@ -6,7 +6,6 @@ import nibabel as nib
 import numpy as np
 from hbn_config import *
 from nilearn import datasets
-
 import pandas as pd
 import seaborn as sns
 import matplotlib
@@ -14,16 +13,6 @@ from nilearn.image import index_img
 # from ide_helpers import METHOD_NAMES
 
 def determine_intersecting_subjects(subject_filter='all'):
-    # '''
-    # right now includes 614 subjects with all three tasks complete
-    # '''
-    # # includes 404 subjects fuly preproc as of 6/30
-    # with open(f'{HBN_OUTDIR}/participants_.txt','r') as f:
-    #     lines=f.readlines()
-    # lines=[l.strip() for l in lines]
-    # print(lines[:10])
-    # if subject_filter=='all' or subject_filter == '0': 
-    #     return sorted(list(lines))
     par_df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}')
     par_df = par_df[(par_df['include_both_tasks']==1)]
     if subject_filter=='all' or subject_filter == '0': 
@@ -84,10 +73,6 @@ def get_subject_motion(subject_id, task='movieTP'):
     return motion
 
 def get_intersecting_subjects(subject_filter='all'):
-    # if subject_filter == 'all' or subject_filter == '0':
-    #     par_df = pd.read_csv(f'{BASIC_PARTICIPANT_DF}')
-    #     par_df = par_df[par_df['confirmed_3_tasks']]
-    #     return par_df['subject_id'].values
     return determine_intersecting_subjects(subject_filter)
 
 def get_tasks():
@@ -158,6 +143,9 @@ def get_intersect_mask(subject_filter,task):
     return nib.load(fn)
 
 def has_repeat_files(subject, task):
+    '''
+    no one here has repeats
+    '''
     return False
 
 def get_brain_cmap(mpl_colorname='inferno'):

@@ -1,4 +1,4 @@
-import argparse,itertools,os
+import argparse,itertools,os,sys
 import numpy as np
 import subprocess
 
@@ -73,9 +73,7 @@ if __name__ == "__main__":
     # import the right utils/config file
     if p.dataset.lower() == 'narratives': import narratives_utils as utils; import narratives_config as config
     elif p.dataset.lower() == 'adult_restmovie': import adult_restmovie_utils as utils; import adult_restmovie_config as config
-    elif p.dataset.lower() == 'camcan': import camcan_utils as utils; import camcan_config as config
     elif p.dataset.lower() == 'infant_restmovie': import infant_restmovie_utils as utils; import infant_restmovie_config as config
-    elif p.dataset.lower() == 'cneuromod': import cneuromod_utils as utils; import cneuromod_config as config
     elif p.dataset.lower() == 'partlycloudy': import partlycloudy_utils as utils; import partlycloudy_config as config
     elif p.dataset.lower() == 'hbn': import hbn_utils as utils; import hbn_config as config
     else: print(f'{p.dataset} not valid')  ; sys.exit(1)
@@ -151,8 +149,6 @@ if __name__ == "__main__":
             TO_LOOP['m'] = M 
             print(f'looping through {len(M)} metrics')
 
-    
-        
     if p.atlas == 0 and 'aggregate' not in p.script_name.lower():
         # we know we're running SL and need to activate that command
         call = 'srun --mpi=pmi2 python -u'

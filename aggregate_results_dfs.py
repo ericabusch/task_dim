@@ -12,8 +12,6 @@ if __name__ == '__main__':
 
 	if p.dataset.lower() == 'narratives': import narratives_utils as utils; from naratives_config import *
 	elif p.dataset.lower() == 'rest_movie': import adult_restmovie_utils as utils; from adult_restmovie_config import *
-	elif p.dataset.lower() == 'camcan': import camcan_utils as utils; from camcan_config import *
-	elif p.dataset.lower() == 'cneuromod': import cneuromod_utils as utils; from cneuromod_config import *
 	elif p.dataset.lower() == 'infant_rest_movie':  import infant_restmovie_utils as utils; from infant_restmovie_config import *
 	elif p.dataset.lower() == 'partly_cloudy':  import partlycloudy_utils as utils; from partlycloudy_config import *
 	elif p.dataset.lower() == 'hbn':  import hbn_utils as utils; from hbn_config import * 
