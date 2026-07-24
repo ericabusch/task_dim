@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --output log/%A_resample_data.o 
 #SBATCH --job-name resample_data
-#SBATCH --mem-per-cpu 8G # the total memory for this job will be --mem-per-cpu * --cpus-per-task * ntasks , so be careful!
+#SBATCH --mem-per-cpu 4G # the total memory for this job will be --mem-per-cpu * --cpus-per-task * ntasks , so be careful!
 #SBATCH -t 24:00:00 
 #SBATCH --ntasks 1 # number of tasks (MPI workers)
 #SBATCH --nodes 1 # number of nodes total; to make sure all jobs are on the same node, set to 1
