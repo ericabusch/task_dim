@@ -1,0 +1,105 @@
+# Reproducibility notes for `compiled_results_analysis.ipynb` / `0*_*.ipynb`
+
+This file documents, for the paper's public GitHub repo, how every figure/statistic in the main
+results notebook is computed and which script produced each input file it loads. It also records
+a known gap: a handful of upstream aggregation scripts were deleted from this repo (in an earlier
+cleanup pass) before this documentation was written, so a few checked-in CSVs currently have no
+generating script in the repo. See "Known gap" below.
+
+## What's in `01_narratives.ipynb` ... `08_pooled_all_datasets.ipynb`
+
+The original `compiled_results_analysis.ipynb` (130 cells, one long monolithic notebook) has been
+split into self-contained per-analysis notebooks for clarity and reuse. They live alongside it at
+the repo root and are meant to be run with the repo root (`task_dim/`) as the working directory,
+same as the original notebook:
+
+| Notebook | Content |
+|---|---|
+| `01_narratives.ipynb` | Narratives: surface maps, cross-task reliability, ISC/IDE/z-score barplots |
+| `02_infant_restmovie.ipynb` | Infant Rest/Movie: surface maps, TFCE diff map, IDE barplot, parcelwise regression |
+| `03_adult_restmovie.ipynb` | Adult Rest/Movie: surface maps, diff maps, IDE barplot |
+| `04_partlycloudy.ipynb` | PartlyCloudy: demographics, motion, surface grid by age group, ISC-IDE vs age |
+| `05_hbn.ipynb` | HBN: demographics, motion, parcelwise difference df, regressions, ISC-IDE vs age |
+| `06_pooled_infant_adult_comparison.ipynb` | Infant vs Adult Rest/Movie: ISC-IDE z-score comparison, IDE-by-task ANOVA |
+| `07_pooled_hbn_adult_infant_bootstrap.ipynb` | HBN + Adult (per-subject) + Infant (group bootstrap): delta-ID vs ISC developmental trajectory |
+| `08_pooled_all_datasets.ipynb` | All 5 datasets pooled: ISC-IDE-vs-age model comparison, parcelwise regression, average ID/ISC vs age, plus a PartlyCloudy+HBN-only subset analysis |
+
+Each notebook re-loads its own inputs from disk rather than relying on another notebook's
+in-memory variables (the original notebook relied heavily on cell execution order and shared
+state, which does not survive a split). A global `SEED = 42` is set in every notebook's setup
+cell so every resampling/permutation call below it is deterministic.
+
+The small set of common helper functions the original notebook defined inline at the top
+(`expand_parcellation_to_volume`, `load_atlas`, `get_region_order`, `get_average_results`,
+`reorder_region_names`, `lme_fit_summary`) are no longer duplicated in every notebook. They now
+live in `plotting_helpers.py` (atlas/region helpers) and `stats_helpers.py` (`lme_fit_summary`),
+and each notebook just imports them.
+
+## Fixes applied while splitting
+
+The original notebook had accumulated dead code and a few real bugs from iterative interactive
+editing. These are called out with a note at the top of the affected notebook, and summarized
+here:
+
+- **`05_hbn.ipynb`**: the cell that builds `HBN/parcelwise_difference_ISC_IDE.csv` was commented
+  out (just re-loading the cached CSV). Re-enabled using `parcelwise_regressions.py`'s
+  `join_results_participant_info` / `clean_difference_dataframe` (both still present). Needed one
+  added line (`AgeGroup` column) that `clean_difference_dataframe` requires but the original
+  snippet never created. Separately, the "ANOVA: AgeGroup x task for IDE" cell used to overwrite
+  `results_df_hbn` in place with an IDE-only filter, which silently broke the very next cell's
+  `measure == 'ISC'` filter on that same variable (zero rows -> all-NaN ages ->
+  `pd.qcut` raising `ValueError: Bin edges must be unique`). Fixed by assigning the IDE-only
+  subset to a new variable (`results_df_hbn_ide`) instead of overwriting `results_df_hbn`.
+- **`07_pooled_hbn_adult_infant_bootstrap.ipynb`**: the per-subject ISC-vs-delta-ID correlation
+  (`res`) was also commented out and reloaded from cache; re-enabled via
+  `stats_helpers.within_subject_spearman`. The bootstrap-distribution plot referenced undefined
+  variables `ci_lo`/`ci_hi`/`rho_obs` (typos for `rho_ci_lower`/`rho_ci_upper`/`rho_observed`) —
+  fixed. The final trajectory plot's bootstrap CI band was computed by a loop that was commented
+  out, then used anyway (`NameError` if actually run) — re-enabled, deterministic via
+  `random_state=i` per iteration. Dead cells referencing undefined `new_data` and `ols_model`
+  (leftover from abandoned diagnostics) were dropped.
+- **`06_pooled_infant_adult_comparison.ipynb`**: dropped a cell that referenced a nonexistent
+  `AgeGroup` column on `subject_means` (`KeyError` if run), and an out-of-order duplicate t-test.
+- **`08_pooled_all_datasets.ipynb`**: the 5-dataset pooled table (`combined_df`) was built by a
+  commented-out cell that also read + pivoted each dataset's CSV twice in a row; re-enabled and
+  de-duplicated. Dropped a superseded linear-age model (immediately re-fit with `log_age` right
+  after) and a macOS-only `!open` shell-magic cell.
+- Duplicate cells appearing 2–3 times verbatim in the original (e.g. the PartlyCloudy+HBN pooled
+  LME) were collapsed to one copy.
+- `stats_helpers.paired_difference_null_distribution(...)` was called without a `random_state` in
+  the original HBN randomization-test cell; `random_state=SEED` was added.
+
+## Known gap: aggregation scripts not currently in this repo
+
+The following checked-in files are inputs to nearly every notebook above, but **no script in this
+repo currently produces them**:
+
+- `compiled/info/combined_participant_info.csv`
+- `compiled/results/{narratives,hbn,partlycloudy,adult_restmovie,infant_restmovie}_compiled_results.csv`
+- `compiled/results/combined_corrs.csv`
+- `compiled/results/combined_corr_analyses.csv`
+
+What *is* traceable: each dataset's raw per-subject NIfTI results come from
+`searchlight_IDE_methods.py` / `atlas_IDE_methods.py` (dimensionality) and `searchlight_isc.py` /
+`atlas_isc.py` (ISC), stacked into volumes by `aggregate_results_volumes.py`, and reduced to a
+raw per-dataset parcelwise CSV by `aggregate_results_dfs.py`. But the step that reshapes/renames
+those into the `compiled/results/*_compiled_results.csv` and `compiled/info/combined_participant_info.csv`
+files loaded throughout the `0*_*.ipynb` notebooks, and the step that computes the whole-brain per-subject
+ISC-IDE permutation correlations in `combined_corrs.csv` / `combined_corr_analyses.csv`, has no
+surviving script.
+
+Git history shows likely candidates that were deleted in a prior cleanup pass:
+`aggregate_subject_results.py`, `parcelwise_correlations.py`, `task_comparison_hbn.py`,
+`task_comparison_infants.py`, `task_comparison_rest_movie_adults.py`. None of their content that
+survives in git history actually writes these specific filenames, so the exact final aggregation
+step could not be confirmed from code alone. Recovering/rewriting this step is tracked as
+follow-up work, not resolved by this reproducibility bundle.
+
+## Reproducibility mechanics
+
+- Every notebook sets `SEED = 42` and calls `np.random.seed(SEED)` at the top.
+- Every bootstrap/permutation call that previously ran with no seed, or a hardcoded seed, now
+  passes `random_state=SEED` (or a per-iteration `random_state=i` for resampling loops, which is
+  already deterministic).
+- Where a cell loads a precomputed file, a comment states which script produced it (or flags it
+  as part of the gap above).

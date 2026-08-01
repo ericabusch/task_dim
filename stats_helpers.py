@@ -10,6 +10,44 @@ import pingouin as pg
 import sys
 import re
 
+def lme_fit_summary(model):
+    """Comprehensive fit summary for a fitted statsmodels MixedLM model: marginal/conditional R^2,
+    variance decomposition (fixed/random/residual), ICC, and AIC/BIC/log-likelihood."""
+    y = model.model.endog
+    fitted = model.fittedvalues
+    var_fixed = np.var(fitted)
+    var_random = model.cov_re.iloc[0, 0]
+    var_residual = model.scale
+    var_total = var_fixed + var_random + var_residual
+    r2_marginal = var_fixed / var_total
+    r2_conditional = (var_fixed + var_random) / var_total
+    r2_corr = pearsonr(y, fitted)[0] ** 2
+    icc = var_random / (var_random + var_residual)
+    print("=" * 70)
+    print("LINEAR MIXED EFFECTS MODEL FIT SUMMARY")
+    print("=" * 70)
+    print(f"\nR² Statistics:")
+    print(f"  Marginal R² (fixed only):       {r2_marginal:.3f}")
+    print(f"  Conditional R² (fixed+random):  {r2_conditional:.3f}")
+    print(f"  Simple R² (correlation):        {r2_corr:.3f}")
+    print(f"\nVariance Decomposition:")
+    print(f"  Fixed effects:      {var_fixed:>10.4f}  ({100*var_fixed/var_total:>5.1f}%)")
+    print(f"  Random effects:     {var_random:>10.4f}  ({100*var_random/var_total:>5.1f}%)")
+    print(f"  Residual:           {var_residual:>10.4f}  ({100*var_residual/var_total:>5.1f}%)")
+    print(f"  Total:              {var_total:>10.4f}")
+    print(f"\nIntraclass Correlation (ICC):     {icc:.3f}")
+    print(f"  (Proportion of variance due to clustering)")
+    print(f"\nModel Comparison:")
+    print(f"  AIC:                {model.aic:.1f}")
+    print(f"  BIC:                {model.bic:.1f}")
+    print(f"  Log-Likelihood:     {model.llf:.1f}")
+    print(f"\nSample:")
+    print(f"  N observations:     {len(y)}")
+    print(f"  N groups:           {len(np.unique(model.model.groups))}")
+    print("=" * 70)
+    return {'r2_marginal': r2_marginal, 'r2_conditional': r2_conditional,
+            'r2_correlation': r2_corr, 'icc': icc, 'aic': model.aic, 'bic': model.bic}
+
 def permutation_test(data, n_iterations, alternative='greater'):
     """
     permutation test for comparing the means of two distributions 

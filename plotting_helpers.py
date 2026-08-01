@@ -3,8 +3,9 @@ from matplotlib import cm, colors
 from matplotlib.colors import ListedColormap,TwoSlopeNorm
 import seaborn as sns
 import nibabel as nib
-from nilearn import plotting, image, glm
+from nilearn import plotting, image, glm, datasets
 import numpy as np
+import pandas as pd
 import tempfile
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import ticker
@@ -566,6 +567,38 @@ def load_schaefer_atlas(resolution_mm=2, yeo_networks=17):
     from nilearn.datasets import fetch_atlas_schaefer_2018
     atlas = fetch_atlas_schaefer_2018(resolution_mm=resolution_mm, yeo_networks=yeo_networks)
     return nib.load(atlas['maps'])
+
+def load_atlas():
+    """Load the 400-region Schaefer (2018, 17 Yeo networks) atlas plus its region labels.
+
+    Unlike load_schaefer_atlas() above, this also returns the (non-background) label strings,
+    which get_average_results()/reorder_region_names() below use to align per-region scores.
+    """
+    ATLAS = datasets.fetch_atlas_schaefer_2018(resolution_mm=2, n_rois=400, yeo_networks=17)
+    ATLAS.labels = np.insert(ATLAS.labels, 0, 'Background')
+    atlas_img = nib.load(ATLAS.maps)
+    labels = [a.decode('utf-8') for a in ATLAS.labels[1:]]
+    return atlas_img, labels
+
+def get_region_order():
+    """Canonical Schaefer-400 region name order, for reindexing per-region result arrays."""
+    _, labels = load_atlas()
+    return labels
+
+def reorder_region_names(df, region_name_order):
+    """Sort a dataframe's 'region_name' column to match region_name_order."""
+    df['region_name'] = pd.Categorical(df['region_name'], categories=region_name_order, ordered=True)
+    return df.sort_values('region_name').reset_index(drop=True)
+
+def get_average_results(df, col_names=[], target_names=[], value_name='score', region_name_order=None):
+    """Filter df to rows matching col_names==target_names, average by region_name, and return
+    the value_name column as an array (optionally reindexed to region_name_order)."""
+    for i in range(len(col_names)):
+        df = df[df[col_names[i]] == target_names[i]].reset_index(drop=True)
+    filtered_df = df.groupby('region_name').mean(numeric_only=True).reset_index()
+    if region_name_order is not None:
+        filtered_df = reorder_region_names(filtered_df, region_name_order)
+    return filtered_df[value_name].values
 
 # Function to expand parcel array to volume
 def expand_parcellation_to_volume(data_arr, atlas_img):
